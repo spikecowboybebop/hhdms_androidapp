@@ -16,9 +16,12 @@ object CallSignalingManager {
     private var peerConnectionFactory: PeerConnectionFactory? = null
     private var peerConnection: PeerConnection? = null
     private var localAudioTrack: AudioTrack? = null
+    private var audioSource: AudioSource? = null
 
-    // 🚀 FIXED TRACKER: Dynamically captures the active agent's line ID
+    // 📍 TRACKERS
     private var agentSocketId: String? = null
+    // 📍 Holding pen for early network pathways generated before agent accepts
+    private val earlyIceCandidates = ArrayList<IceCandidate>()
 
     fun initialize(context: Context) {
         if (mSocket != null) return // Already setup
@@ -36,8 +39,9 @@ object CallSignalingManager {
                     val response = args[0] as JSONObject
                     val sdpAnswerData = response.getJSONObject("sdpAnswer")
 
-                    // 🚀 FIXED: Read "agentSocketId" from the server payload, not patientSocketId
+                    // Capture the real agent socket ID
                     agentSocketId = response.optString("agentSocketId")
+                    val currentAgentId = agentSocketId
 
                     Log.d(TAG, "🟢 Web Agent answered! Processing response hardware signature...")
 
@@ -50,10 +54,21 @@ object CallSignalingManager {
                     peerConnection?.setRemoteDescription(object : SdpObserver {
                         override fun onCreateSuccess(p0: SessionDescription?) {}
                         override fun onSetSuccess() {
-                            Log.d(TAG, "🎉 WebRTC Peer Connection is officially ACTIVE and LINKED!")
+                            Log.d(TAG, "🚀 WebRTC Peer Connection is officially ACTIVE and LINKED!")
+
+                            // Flush out any stashed candidates immediately down the active line
+                            if (!currentAgentId.isNullOrEmpty()) {
+                                synchronized(earlyIceCandidates) {
+                                    Log.d(TAG, "🛰️ Sending ${earlyIceCandidates.size} stashed ICE candidates to Agent...")
+                                    for (candidate in earlyIceCandidates) {
+                                        sendIceCandidateToAgent(currentAgentId, candidate)
+                                    }
+                                    earlyIceCandidates.clear() // Clean up memory allocation
+                                }
+                            }
                         }
-                        override fun onCreateFailure(p0: String?) {}
-                        override fun onSetFailure(p0: String?) {}
+                        override fun onCreateFailure(p0: String?) { Log.e(TAG, "Remote Description Failure: $p0") }
+                        override fun onSetFailure(p0: String?) { Log.e(TAG, "Remote Description Set Failure: $p0") }
                     }, rtcAnswer)
 
                 } catch (e: Exception) {
@@ -61,15 +76,34 @@ object CallSignalingManager {
                 }
             }
 
+            // 🔥 FIXED: Android now actively listens for incoming pathway parameters from the Web Agent!
+            mSocket?.on("remote-ice-candidate") { args ->
+                try {
+                    val data = args[0] as JSONObject
+                    if (data.has("candidate")) {
+                        val candidateObj = data.getJSONObject("candidate")
+                        val iceCandidate = IceCandidate(
+                            candidateObj.getString("sdpMid"),
+                            candidateObj.getInt("sdpMLineIndex"),
+                            candidateObj.getString("candidate")
+                        )
+                        peerConnection?.addIceCandidate(iceCandidate)
+                        Log.d(TAG, "🛰️ Successfully appended network pathway from Web Agent onto native hardware layout.")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error parsing incoming remote ICE candidate: ${e.message}")
+                }
+            }
+
             mSocket?.connect()
 
-            // 1. Initialize Google's global WebRTC hardware contexts safely
+            // Initialize Google's global WebRTC hardware contexts safely
             PeerConnectionFactory.initialize(
                 PeerConnectionFactory.InitializationOptions.builder(context)
                     .createInitializationOptions()
             )
 
-            // 2. Build the structural pipeline factory engine
+            // Build the structural pipeline factory engine
             peerConnectionFactory = PeerConnectionFactory.builder()
                 .setOptions(PeerConnectionFactory.Options())
                 .createPeerConnectionFactory()
@@ -85,44 +119,40 @@ object CallSignalingManager {
             return
         }
 
-        // Reset tracker for a completely fresh call instance
-        agentSocketId = null
+        // Make sure previous connections are cleanly purged from device memory first
+        hangUpActiveCall()
 
-        // 3. Capture real hardware microphone streams
-        val audioSource = peerConnectionFactory?.createAudioSource(MediaConstraints())
+        // Capture real hardware microphone streams
+        audioSource = peerConnectionFactory?.createAudioSource(MediaConstraints())
         localAudioTrack = peerConnectionFactory?.createAudioTrack("ARDAMSa0", audioSource)
 
-        // 4. Set up public ICE network configurations
+        // Set up public ICE network configurations
         val iceServers = listOf(PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer())
         val rtcConfig = PeerConnection.RTCConfiguration(iceServers)
 
-        // 5. Create our peer link infrastructure
+        // Create our peer link infrastructure
         peerConnection = peerConnectionFactory?.createPeerConnection(rtcConfig, object : PeerConnection.Observer {
             override fun onSignalingChange(state: PeerConnection.SignalingState?) {}
-            override fun onIceConnectionChange(state: PeerConnection.IceConnectionState?) {}
+            override fun onIceConnectionChange(state: PeerConnection.IceConnectionState?) {
+                Log.d(TAG, "❄️ ICE Connection State Changed: ${state?.name}")
+            }
             override fun onIceConnectionReceivingChange(p0: Boolean) {}
             override fun onIceGatheringChange(state: PeerConnection.IceGatheringState?) {}
 
             override fun onIceCandidate(candidate: IceCandidate?) {
                 if (candidate != null) {
-                    // 🚀 CRITICAL FIX: If we don't know who the agent is yet, hold onto the candidates
-                    // or let them append to the initial SDP package instead of flooding empty sockets
                     val currentAgentId = agentSocketId
-                    if (currentAgentId.isNullOrEmpty()) {
-                        Log.d(TAG, "⏳ ICE Candidate gathered early. Stashing configuration until line connects...")
-                        return
-                    }
 
-                    val icePayload = JSONObject().apply {
-                        put("targetSocketId", currentAgentId)
-                        put("candidate", JSONObject().apply {
-                            put("sdpMid", candidate.sdpMid)
-                            put("sdpMLineIndex", candidate.sdpMLineIndex)
-                            put("candidate", candidate.sdp)
-                        })
+                    if (currentAgentId.isNullOrEmpty()) {
+                        // If the agent hasn't clicked accept yet, cache it safely
+                        synchronized(earlyIceCandidates) {
+                            earlyIceCandidates.add(candidate)
+                        }
+                        Log.d(TAG, "📦 ICE Candidate gathered early. Stashed safety config framework.")
+                    } else {
+                        // If agent is already connected, send it over right away!
+                        sendIceCandidateToAgent(currentAgentId, candidate)
                     }
-                    mSocket?.emit("relay-ice-candidate", icePayload)
-                    Log.d(TAG, "🛰️ Dispatched phone network ICE Candidate pathway map.")
                 }
             }
             override fun onIceCandidatesRemoved(p0: Array<out IceCandidate>?) {}
@@ -133,10 +163,10 @@ object CallSignalingManager {
             override fun onAddTrack(p0: RtpReceiver?, p1: Array<out MediaStream>?) {}
         })
 
-        // 6. Bind the live microphone data track to the outgoing connection pipeline link
+        // Bind the live microphone data track to the outgoing connection pipeline link
         peerConnection?.addTrack(localAudioTrack, listOf("ARDAMSms0"))
 
-        // 7. Create a real authentic WebRTC SDP Offer signature package!
+        // Create a real authentic WebRTC SDP Offer signature package!
         val mediaConstraints = MediaConstraints().apply {
             mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
         }
@@ -145,10 +175,17 @@ object CallSignalingManager {
             override fun onCreateSuccess(description: SessionDescription?) {
                 if (description == null) return
 
-                // Set local description frame configuration signature
-                peerConnection?.setLocalDescription(this, description)
+                // 🔥 FIXED: Passing a clean explicit inline observer implementation block instead of "this"
+                peerConnection?.setLocalDescription(object : SdpObserver {
+                    override fun onCreateSuccess(p0: SessionDescription?) {}
+                    override fun onSetSuccess() {
+                        Log.d(TAG, "📝 Local description frame signature bound successfully.")
+                    }
+                    override fun onCreateFailure(p0: String?) {}
+                    override fun onSetFailure(p0: String?) { Log.e(TAG, "Failed to bind local description: $p0") }
+                }, description)
 
-                // 8. Fire the authentic cryptographic SDP payload down the signaling wire!
+                // Fire the authentic cryptographic SDP payload down the signaling wire!
                 val dialPayload = JSONObject().apply {
                     put("patientEmail", patientEmail)
                     put("sdpOffer", JSONObject().apply {
@@ -157,11 +194,53 @@ object CallSignalingManager {
                     })
                 }
                 mSocket?.emit("call-center-dial", dialPayload)
-                Log.d(TAG, "🚀 Real cryptographic WebRTC call offer fired down the wire!")
+                Log.d(TAG, "📞 Real cryptographic WebRTC call offer fired down the wire!")
             }
             override fun onSetSuccess() {}
             override fun onCreateFailure(p0: String?) { Log.e(TAG, "SDP Creation Failed: $p0") }
             override fun onSetFailure(p0: String?) {}
         }, mediaConstraints)
+    }
+
+    /**
+     * 🔥 ADDED: Dynamic Cleanup Routine
+     * Ensures absolute execution hygiene so subsequent redials clear media tracks cleanly.
+     */
+    fun hangUpActiveCall() {
+        try {
+            agentSocketId = null
+            synchronized(earlyIceCandidates) {
+                earlyIceCandidates.clear()
+            }
+            peerConnection?.close()
+            peerConnection = null
+
+            localAudioTrack?.dispose()
+            localAudioTrack = null
+
+            audioSource?.dispose()
+            audioSource = null
+            Log.d(TAG, "🧼 Call structural components destroyed. Hardware paths reset.")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error cleaning up WebRTC resources: ${e.message}")
+        }
+    }
+
+    // Helper function to format and send candidates uniformly over Socket.io
+    private fun sendIceCandidateToAgent(agentId: String, candidate: IceCandidate) {
+        try {
+            val icePayload = JSONObject().apply {
+                put("targetSocketId", agentId)
+                put("candidate", JSONObject().apply {
+                    put("sdpMid", candidate.sdpMid)
+                    put("sdpMLineIndex", candidate.sdpMLineIndex)
+                    put("candidate", candidate.sdp)
+                })
+            }
+            mSocket?.emit("relay-ice-candidate", icePayload)
+            Log.d(TAG, "🛰️ Dispatched phone network ICE Candidate pathway map.")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to build ICE payload: ${e.message}")
+        }
     }
 }
