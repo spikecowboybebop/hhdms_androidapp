@@ -1,6 +1,7 @@
 package com.example.hhdmspatientapp
 
 import android.content.Context
+import android.media.AudioManager
 import android.util.Log
 import io.socket.client.IO
 import io.socket.client.Socket
@@ -17,20 +18,24 @@ object CallSignalingManager {
     private var peerConnection: PeerConnection? = null
     private var localAudioTrack: AudioTrack? = null
     private var audioSource: AudioSource? = null
+    private var audioManager: AudioManager? = null
 
     // 📍 TRACKERS
     private var agentSocketId: String? = null
-    // 📍 Holding pen for early network pathways generated before agent accepts
+    // Holding pen for early network pathways generated before agent accepts
     private val earlyIceCandidates = ArrayList<IceCandidate>()
 
     fun initialize(context: Context) {
         if (mSocket != null) return // Already setup
 
+        // Initialize Android's native Hardware AudioManager reference container
+        audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+
         try {
             mSocket = IO.socket(SERVER_URL)
 
             mSocket?.on(Socket.EVENT_CONNECT) {
-                Log.d(TAG, "⚡ Connected to NestJS Signaling Server!")
+                Log.d(TAG, "🔌 Connected to NestJS Signaling Server!")
             }
 
             // Listens for when the Web Agent accepts the phone's incoming call
@@ -43,7 +48,10 @@ object CallSignalingManager {
                     agentSocketId = response.optString("agentSocketId")
                     val currentAgentId = agentSocketId
 
-                    Log.d(TAG, "🟢 Web Agent answered! Processing response hardware signature...")
+                    Log.d(TAG, "🎙️ Web Agent answered! Processing response hardware signature...")
+
+                    // 🚀 CRITICAL FIX: Route incoming stream packets straight to the physical speakers
+                    configureAudioHardwareForCall(true)
 
                     val rtcAnswer = SessionDescription(
                         SessionDescription.Type.ANSWER,
@@ -54,7 +62,7 @@ object CallSignalingManager {
                     peerConnection?.setRemoteDescription(object : SdpObserver {
                         override fun onCreateSuccess(p0: SessionDescription?) {}
                         override fun onSetSuccess() {
-                            Log.d(TAG, "🚀 WebRTC Peer Connection is officially ACTIVE and LINKED!")
+                            Log.d(TAG, "✅ WebRTC Peer Connection is officially ACTIVE and LINKED!")
 
                             // Flush out any stashed candidates immediately down the active line
                             if (!currentAgentId.isNullOrEmpty()) {
@@ -76,7 +84,6 @@ object CallSignalingManager {
                 }
             }
 
-            // 🔥 FIXED: Android now actively listens for incoming pathway parameters from the Web Agent!
             mSocket?.on("remote-ice-candidate") { args ->
                 try {
                     val data = args[0] as JSONObject
@@ -134,7 +141,7 @@ object CallSignalingManager {
         peerConnection = peerConnectionFactory?.createPeerConnection(rtcConfig, object : PeerConnection.Observer {
             override fun onSignalingChange(state: PeerConnection.SignalingState?) {}
             override fun onIceConnectionChange(state: PeerConnection.IceConnectionState?) {
-                Log.d(TAG, "❄️ ICE Connection State Changed: ${state?.name}")
+                Log.d(TAG, "📶 ICE Connection State Changed: ${state?.name}")
             }
             override fun onIceConnectionReceivingChange(p0: Boolean) {}
             override fun onIceGatheringChange(state: PeerConnection.IceGatheringState?) {}
@@ -156,7 +163,9 @@ object CallSignalingManager {
                 }
             }
             override fun onIceCandidatesRemoved(p0: Array<out IceCandidate>?) {}
-            override fun onAddStream(p0: MediaStream?) {}
+            override fun onAddStream(stream: MediaStream?) {
+                Log.d(TAG, "🎵 Remote WebRTC Audio Stream detected from Agent. Attaching...")
+            }
             override fun onRemoveStream(p0: MediaStream?) {}
             override fun onDataChannel(p0: DataChannel?) {}
             override fun onRenegotiationNeeded() {}
@@ -175,7 +184,6 @@ object CallSignalingManager {
             override fun onCreateSuccess(description: SessionDescription?) {
                 if (description == null) return
 
-                // 🔥 FIXED: Passing a clean explicit inline observer implementation block instead of "this"
                 peerConnection?.setLocalDescription(object : SdpObserver {
                     override fun onCreateSuccess(p0: SessionDescription?) {}
                     override fun onSetSuccess() {
@@ -194,7 +202,7 @@ object CallSignalingManager {
                     })
                 }
                 mSocket?.emit("call-center-dial", dialPayload)
-                Log.d(TAG, "📞 Real cryptographic WebRTC call offer fired down the wire!")
+                Log.d(TAG, "🚀 Real cryptographic WebRTC call offer fired down the wire!")
             }
             override fun onSetSuccess() {}
             override fun onCreateFailure(p0: String?) { Log.e(TAG, "SDP Creation Failed: $p0") }
@@ -203,11 +211,36 @@ object CallSignalingManager {
     }
 
     /**
-     * 🔥 ADDED: Dynamic Cleanup Routine
+     * 🚀 NEW: Explicit Audio Hardware Routing Manager
+     * Switches the system audio layer from normal multimedia mode into high-priority VoIP mode.
+     */
+    private fun configureAudioHardwareForCall(activate: Boolean) {
+        try {
+            audioManager?.let { am ->
+                if (activate) {
+                    am.mode = AudioManager.MODE_IN_COMMUNICATION
+                    am.isSpeakerphoneOn = true // Routes to outer speaker layout for seamless testing
+                    Log.d(TAG, "🔊 Android system hardware successfully hijacked into MODE_IN_COMMUNICATION.")
+                } else {
+                    am.mode = AudioManager.MODE_NORMAL
+                    am.isSpeakerphoneOn = false
+                    Log.d(TAG, "🔇 Android system hardware returned safely back to MODE_NORMAL status.")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to reconfigure phone device hardware channels: ${e.message}")
+        }
+    }
+
+    /**
+     * Dynamic Cleanup Routine
      * Ensures absolute execution hygiene so subsequent redials clear media tracks cleanly.
      */
     fun hangUpActiveCall() {
         try {
+            // Restore native hardware routing controls safely
+            configureAudioHardwareForCall(false)
+
             agentSocketId = null
             synchronized(earlyIceCandidates) {
                 earlyIceCandidates.clear()
@@ -238,7 +271,7 @@ object CallSignalingManager {
                 })
             }
             mSocket?.emit("relay-ice-candidate", icePayload)
-            Log.d(TAG, "🛰️ Dispatched phone network ICE Candidate pathway map.")
+            Log.d(TAG, "📡 Dispatched phone network ICE Candidate pathway map.")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to build ICE payload: ${e.message}")
         }
