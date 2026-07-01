@@ -33,7 +33,7 @@ data class SignupRequest(
     val phone_number: String,
     val email: String,
     val password: String,
-    val role_name: String = "PATIENT"
+    val role_name: String = "MOBILE_USER"
 )
 
 data class SignupResponse(
@@ -58,7 +58,7 @@ interface AuthApiService {
 // =============================================================================
 object RetrofitClient {
     // 10.0.2.2 automatically bridges out to your host development computer's localhost:3000
-    private const val BASE_URL = "http://192.168.0.101:3001/"
+    private const val BASE_URL = "http://192.168.0.109:3001/"
 
     val apiService: AuthApiService by lazy {
         Retrofit.Builder()

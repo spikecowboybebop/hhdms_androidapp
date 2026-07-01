@@ -2,19 +2,31 @@ package com.example.hhdmspatientapp.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Brand colors matching the image_d51481.png design style
-val MedicalTeal = Color(0xFF00D4B2)
-val LightTealBackground = Color(0xFFE0F2F1)
-val DeepCharcoal = Color(0xFF646363)
-val MutedTextGrey = Color(0xFF757575)
-val SurfaceWhite = Color(0xFFFFFFFF)
-val WindowBackground = Color(0xFFF4F6F8)
+// ============================================================
+// Web-matching palette — Aastha Tele-HealthCare brand
+// Matches apps/web globals.css tokens exactly.
+// ============================================================
 
-// Fallback theme colors to keep the compiler happy
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+val TechTeal = Color(0xFF00D4B2)
+val ClinicalNavy = Color(0xFF0A2540)
+val SlateGray = Color(0xFF2D3A4A)
+val SoftSlate = Color(0xFFF8F9FA)
+val PureWhite = Color(0xFFFFFFFF)
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+val TitleBlack = Color(0xFF1A202C)
+val LightGray = Color(0xFFE2E8F0)
+val CoolGray = Color(0xFF718096)
+val IconMuted = Color(0xFFA0AEC0)
+val FieldBg = Color(0xFFF7FAFC)
+val ErrorRed = Color(0xFFE53E3E)
+val AlertAmber = Color(0xFFFF9900)
+
+// ============================================================
+// Legacy aliases — kept for DashboardScreen compatibility
+// ============================================================
+
+val MedicalTeal = TechTeal
+val DeepCharcoal = ClinicalNavy
+val MutedTextGrey = CoolGray
+val SurfaceWhite = PureWhite
+val WindowBackground = SoftSlate

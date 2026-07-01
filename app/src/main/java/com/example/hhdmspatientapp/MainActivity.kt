@@ -11,7 +11,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import com.example.hhdmspatientapp.ui.theme.HHDMSPatientAppTheme
+import com.example.hhdmspatientapp.ui.theme.*
 
 enum class AppScreen {
     AUTH, DASHBOARD
@@ -28,7 +28,7 @@ class MainActivity : ComponentActivity() {
             HHDMSPatientAppTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = androidx.compose.ui.graphics.Color(0xFFF4F6F8)
+                    color = SoftSlate,
                 ) {
                     // 1. Set up the local navigation state containers
                     var currentScreen by remember { mutableStateOf(AppScreen.AUTH) }

@@ -11,7 +11,7 @@ import java.net.URISyntaxException
 
 object CallSignalingManager {
     private const val TAG = "CallSignalingManager"
-    private const val SERVER_URL = "http://192.168.0.101:3001"
+    private const val SERVER_URL = "http://192.168.0.109:3001"
 
     private var mSocket: Socket? = null
     private var peerConnectionFactory: PeerConnectionFactory? = null
@@ -22,8 +22,12 @@ object CallSignalingManager {
 
     // 📍 TRACKERS
     private var agentSocketId: String? = null
+    private var currentPatientEmail: String? = null
     // Holding pen for early network pathways generated before agent accepts
     private val earlyIceCandidates = ArrayList<IceCandidate>()
+
+    // Callback for UI state updates
+    var onCallStateChange: ((CallStatus) -> Unit)? = null
 
     fun initialize(context: Context) {
         if (mSocket != null) return // Already setup
@@ -64,6 +68,9 @@ object CallSignalingManager {
                         override fun onSetSuccess() {
                             Log.d(TAG, "✅ WebRTC Peer Connection is officially ACTIVE and LINKED!")
 
+                            // Notify UI that the call is connected
+                            onCallStateChange?.invoke(CallStatus.CONNECTED)
+
                             // Flush out any stashed candidates immediately down the active line
                             if (!currentAgentId.isNullOrEmpty()) {
                                 synchronized(earlyIceCandidates) {
@@ -102,6 +109,13 @@ object CallSignalingManager {
                 }
             }
 
+            // Listen for remote hangup from the agent
+            mSocket?.on("call-ended") {
+                Log.d(TAG, "📞 Remote party hung up the call!")
+                hangUpActiveCall()
+                onCallStateChange?.invoke(CallStatus.IDLE)
+            }
+
             mSocket?.connect()
 
             // Initialize Google's global WebRTC hardware contexts safely
@@ -128,6 +142,7 @@ object CallSignalingManager {
 
         // Make sure previous connections are cleanly purged from device memory first
         hangUpActiveCall()
+        currentPatientEmail = patientEmail
 
         // Capture real hardware microphone streams
         audioSource = peerConnectionFactory?.createAudioSource(MediaConstraints())
@@ -142,6 +157,15 @@ object CallSignalingManager {
             override fun onSignalingChange(state: PeerConnection.SignalingState?) {}
             override fun onIceConnectionChange(state: PeerConnection.IceConnectionState?) {
                 Log.d(TAG, "📶 ICE Connection State Changed: ${state?.name}")
+                when (state) {
+                    PeerConnection.IceConnectionState.DISCONNECTED,
+                    PeerConnection.IceConnectionState.FAILED -> {
+                        Log.d(TAG, "⚠️ ICE connection lost or failed. Cleaning up...")
+                        hangUpActiveCall()
+                        onCallStateChange?.invoke(CallStatus.IDLE)
+                    }
+                    else -> {}
+                }
             }
             override fun onIceConnectionReceivingChange(p0: Boolean) {}
             override fun onIceGatheringChange(state: PeerConnection.IceGatheringState?) {}
@@ -238,10 +262,16 @@ object CallSignalingManager {
      */
     fun hangUpActiveCall() {
         try {
+            // Notify the signaling server that this client is ending the call
+            mSocket?.emit("end-call", JSONObject().apply {
+                put("targetSocketId", agentSocketId ?: "")
+            })
+
             // Restore native hardware routing controls safely
             configureAudioHardwareForCall(false)
 
             agentSocketId = null
+            currentPatientEmail = null
             synchronized(earlyIceCandidates) {
                 earlyIceCandidates.clear()
             }
