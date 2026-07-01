@@ -94,7 +94,7 @@ fun DashboardScreen(userEmail: String, onLogout: () -> Unit) {
                             )
                             Text(
                                 text = "Tele-HealthCare",
-                                fontSize = 12.sp,
+                                fontSize = 15.sp,
                                 fontWeight = FontWeight.Normal,
                                 color = PureWhite.copy(alpha = 0.8f),
                             )
