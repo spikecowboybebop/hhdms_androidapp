@@ -416,7 +416,7 @@ fun CallScreen(
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = displayName.take(2),
+                    text = "AH",
                     fontSize = 44.sp,
                     fontWeight = FontWeight.Bold,
                     color = PureWhite,
@@ -426,7 +426,7 @@ fun CallScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = displayName,
+                text = "Aastha Tele-HealthCare",
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Bold,
                 color = PureWhite,
@@ -453,7 +453,7 @@ fun CallScreen(
                 modifier = Modifier.size(72.dp),
                 shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error,
+                    containerColor = ErrorRed,
                     contentColor = PureWhite,
                 ),
                 contentPadding = PaddingValues(0.dp),
