@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -60,4 +61,6 @@ dependencies {
         exclude(group = "org.json", module = "json")
     }
     implementation("io.getstream:stream-webrtc-android:1.3.10")
+    implementation("com.google.firebase:firebase-messaging-ktx:24.1.1")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 }

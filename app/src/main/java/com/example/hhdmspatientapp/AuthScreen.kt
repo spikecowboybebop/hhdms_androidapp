@@ -524,6 +524,10 @@ fun AuthScreen(onAuthSuccess: (String) -> Unit) {
                     withContext(Dispatchers.Main) {
                         isLoading = false
                         Log.d("HHDMS_NET", "Registration successful: ${response.patientId}")
+                        if (response.access_token != null) {
+                            TokenManager.saveToken(response.access_token)
+                        }
+                        HhdmsFirebaseMessagingService.registerCurrentToken()
                         onAuthSuccess(emailAddress)
                     }
                 } catch (e: Exception) {
@@ -546,6 +550,8 @@ fun AuthScreen(onAuthSuccess: (String) -> Unit) {
                     withContext(Dispatchers.Main) {
                         isLoading = false
                         Log.d("HHDMS_NET", "Login successful: ${response.user.role}")
+                        TokenManager.saveToken(response.access_token)
+                        HhdmsFirebaseMessagingService.registerCurrentToken()
                         onAuthSuccess(emailAddress)
                     }
                 } catch (e: Exception) {

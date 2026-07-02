@@ -38,7 +38,15 @@ data class SignupRequest(
 
 data class SignupResponse(
     val message: String,
-    val patientId: String
+    val userId: String? = null,
+    val patientId: String? = null,
+    val access_token: String? = null,
+)
+
+// FCM token registration
+data class RegisterTokenRequest(
+    val token: String,
+    val device_type: String = "android",
 )
 
 // =============================================================================
@@ -51,6 +59,9 @@ interface AuthApiService {
 
     @POST("auth/mobile_signup")
     suspend fun signup(@Body request: SignupRequest): SignupResponse
+
+    @POST("notifications/register-token")
+    suspend fun registerToken(@Body request: RegisterTokenRequest): Map<String, Any?>
 }
 
 // =============================================================================
@@ -60,10 +71,26 @@ object RetrofitClient {
     // 10.0.2.2 automatically bridges out to your host development computer's localhost:3000
     private const val BASE_URL = "http://192.168.0.100:3001/"
 
+    private val okHttpClient = okhttp3.OkHttpClient.Builder()
+        .addInterceptor { chain ->
+            val original = chain.request()
+            val token = TokenManager.getToken()
+            val request = if (token != null) {
+                original.newBuilder()
+                    .header("Authorization", "Bearer $token")
+                    .build()
+            } else {
+                original
+            }
+            chain.proceed(request)
+        }
+        .build()
+
     val apiService: AuthApiService by lazy {
         Retrofit.Builder()
             .baseUrl(BASE_URL)
-            .addConverterFactory(GsonConverterFactory.create()) // Handles JSON parsing automatically
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(AuthApiService::class.java)
     }
