@@ -17,11 +17,13 @@ class HhdmsFirebaseMessagingService : FirebaseMessagingService() {
     override fun onCreate() {
         super.onCreate()
         NotificationStorage.init(applicationContext)
+        FcmTokenStorage.init(applicationContext)
     }
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
         Log.d(TAG, "New FCM token: $token")
+        FcmTokenStorage.saveToken(token)
         registerTokenWithServer(token)
     }
 
@@ -97,20 +99,43 @@ class HhdmsFirebaseMessagingService : FirebaseMessagingService() {
 
         fun registerCurrentToken() {
             if (TokenManager.getToken() == null) return
+
+            val storedToken = FcmTokenStorage.getToken()
+            if (storedToken != null) {
+                CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        RetrofitClient.apiService.registerToken(
+                            RegisterTokenRequest(token = storedToken),
+                        )
+                        Log.d(TAG, "FCM token registered from local storage")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to register stored FCM token: ${e.message}, trying Firebase fetch")
+                        fetchAndRegisterFromFirebase()
+                    }
+                }
+            } else {
+                fetchAndRegisterFromFirebase()
+            }
+        }
+
+        private fun fetchAndRegisterFromFirebase() {
             FirebaseMessaging.getInstance().token
                 .addOnCompleteListener { task ->
                     if (task.isSuccessful) {
                         val fcmToken = task.result
+                        FcmTokenStorage.saveToken(fcmToken)
                         CoroutineScope(Dispatchers.IO).launch {
                             try {
                                 RetrofitClient.apiService.registerToken(
                                     RegisterTokenRequest(token = fcmToken),
                                 )
-                                Log.d(TAG, "FCM token explicitly registered")
+                                Log.d(TAG, "FCM token explicitly registered from Firebase")
                             } catch (e: Exception) {
                                 Log.e(TAG, "Failed to explicitly register FCM token: ${e.message}")
                             }
                         }
+                    } else {
+                        Log.e(TAG, "Firebase token retrieval failed: ${task.exception?.message}")
                     }
                 }
         }

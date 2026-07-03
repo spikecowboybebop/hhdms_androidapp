@@ -7,13 +7,21 @@ import com.google.gson.reflect.TypeToken
 
 object NotificationStorage {
     private const val PREFS_NAME = "notification_prefs"
-    private const val KEY_NOTIFICATIONS = "notifications"
     private const val MAX_NOTIFICATIONS = 100
     private val gson = Gson()
     private var prefs: SharedPreferences? = null
+    private var currentUserId: String? = null
 
     fun init(context: Context) {
         prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    }
+
+    fun setCurrentUser(email: String?) {
+        currentUserId = email
+    }
+
+    private fun storageKey(): String {
+        return if (currentUserId != null) "notifications_${currentUserId!!.hashCode()}" else "notifications_default"
     }
 
     fun addNotification(item: NotificationItem) {
@@ -26,7 +34,7 @@ object NotificationStorage {
     }
 
     fun getNotifications(): List<NotificationItem> {
-        val json = prefs?.getString(KEY_NOTIFICATIONS, null) ?: return emptyList()
+        val json = prefs?.getString(storageKey(), null) ?: return emptyList()
         val type = object : TypeToken<List<NotificationItem>>() {}.type
         return try {
             gson.fromJson(json, type) ?: emptyList()
@@ -48,7 +56,7 @@ object NotificationStorage {
     }
 
     fun clearAll() {
-        prefs?.edit()?.remove(KEY_NOTIFICATIONS)?.apply()
+        prefs?.edit()?.remove(storageKey())?.apply()
     }
 
     fun getUnreadCount(): Int {
@@ -56,7 +64,7 @@ object NotificationStorage {
     }
 
     private fun save(list: List<NotificationItem>) {
-        prefs?.edit()?.putString(KEY_NOTIFICATIONS, gson.toJson(list))?.apply()
+        prefs?.edit()?.putString(storageKey(), gson.toJson(list))?.apply()
     }
 
     private var lastId: Long = System.currentTimeMillis()

@@ -91,10 +91,13 @@ fun NotificationsScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.Transparent,
+                    scrolledContainerColor = Color.Transparent,
                 ),
-                modifier = Modifier.background(
-                    Brush.horizontalGradient(colors = listOf(TechTeal, ClinicalNavy))
-                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Brush.horizontalGradient(colors = listOf(TechTeal, ClinicalNavy))
+                    ),
             )
         },
         containerColor = SoftSlate,
@@ -132,8 +135,10 @@ fun NotificationsScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(horizontal = 16.dp)
+                    .navigationBarsPadding(),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(bottom = 8.dp),
             ) {
                 items(notifications, key = { it.id }) { item ->
                     NotificationCard(

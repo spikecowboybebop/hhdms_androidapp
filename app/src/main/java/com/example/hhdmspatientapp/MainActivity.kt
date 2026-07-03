@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -26,7 +27,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 enum class AppScreen {
-    AUTH, DASHBOARD, NOTIFICATIONS, BOOKING_DETAIL, APPOINTMENTS, MBBS_DOCTOR_DASHBOARD
+    AUTH, DASHBOARD, NOTIFICATIONS, BOOKING_DETAIL, APPOINTMENTS, MBBS_DOCTOR_DASHBOARD, MBBS_BOOKING_DETAIL
 }
 
 class MainActivity : ComponentActivity() {
@@ -52,6 +53,7 @@ class MainActivity : ComponentActivity() {
 
         TokenManager.init(applicationContext)
         NotificationStorage.init(applicationContext)
+        FcmTokenStorage.init(applicationContext)
         createNotificationChannel()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -78,6 +80,8 @@ class MainActivity : ComponentActivity() {
                     var selectedSessionId by remember { mutableStateOf<String?>(null) }
                     var latestSession by remember { mutableStateOf<SessionSummary?>(null) }
                     var sessionLoadKey by remember { mutableStateOf(0) }
+                    var homeScreen by remember { mutableStateOf(AppScreen.DASHBOARD) }
+                    var bookingOrigin by remember { mutableStateOf(AppScreen.DASHBOARD) }
 
                     notificationIntentCount // read to trigger recomposition on new intent
 
@@ -99,25 +103,56 @@ class MainActivity : ComponentActivity() {
                     if (!pendingSessionId.isNullOrBlank() &&
                         (currentScreen == AppScreen.DASHBOARD || currentScreen == AppScreen.MBBS_DOCTOR_DASHBOARD)
                     ) {
+                        bookingOrigin = homeScreen
                         selectedSessionId = pendingSessionId
                         pendingSessionId = null
-                        currentScreen = AppScreen.BOOKING_DETAIL
+                        currentScreen = if (loggedInUserRole == "MBBS_DOCTOR")
+                            AppScreen.MBBS_BOOKING_DETAIL
+                        else
+                            AppScreen.BOOKING_DETAIL
                     }
 
                     when (currentScreen) {
                         AppScreen.AUTH -> {
                             AuthScreen(onAuthSuccess = { verifiedEmail, role ->
                                 Toast.makeText(this@MainActivity, "Logged in as $verifiedEmail", Toast.LENGTH_LONG).show()
+                                NotificationStorage.setCurrentUser(verifiedEmail)
                                 loggedInUserEmail = verifiedEmail
                                 loggedInUserRole = role
+
+                                // Fetch pending server notifications for offline users
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    try {
+                                        val pending = RetrofitClient.apiService.getPendingNotifications()
+                                        for (n in pending) {
+                                            NotificationStorage.addNotification(
+                                                NotificationItem(
+                                                    id = NotificationStorage.nextId(),
+                                                    title = n.title,
+                                                    body = n.body,
+                                                    timestamp = System.currentTimeMillis(),
+                                                    sessionId = n.session_id,
+                                                )
+                                            )
+                                        }
+                                    } catch (_: Exception) { }
+                                }
+
                                 val pendingId = pendingSessionId
                                 pendingSessionId = null
                                 if (!pendingId.isNullOrBlank()) {
+                                    homeScreen = if (role == "MBBS_DOCTOR") AppScreen.MBBS_DOCTOR_DASHBOARD else AppScreen.DASHBOARD
+                                    bookingOrigin = homeScreen
                                     selectedSessionId = pendingId
-                                    currentScreen = AppScreen.BOOKING_DETAIL
+                                    currentScreen = if (role == "MBBS_DOCTOR")
+                                        AppScreen.MBBS_BOOKING_DETAIL
+                                    else
+                                        AppScreen.BOOKING_DETAIL
                                 } else if (role == "MBBS_DOCTOR") {
+                                    homeScreen = AppScreen.MBBS_DOCTOR_DASHBOARD
                                     currentScreen = AppScreen.MBBS_DOCTOR_DASHBOARD
                                 } else {
+                                    homeScreen = AppScreen.DASHBOARD
                                     currentScreen = AppScreen.DASHBOARD
                                 }
                                 sessionLoadKey++
@@ -130,6 +165,7 @@ class MainActivity : ComponentActivity() {
                                 latestSession = latestSession,
                                 onLogout = {
                                     TokenManager.clearToken()
+                                    NotificationStorage.setCurrentUser(null)
                                     currentScreen = AppScreen.AUTH
                                 },
                                 onNavigateToNotifications = {
@@ -139,6 +175,7 @@ class MainActivity : ComponentActivity() {
                                     currentScreen = AppScreen.APPOINTMENTS
                                 },
                                 onNavigateToBookingDetail = { sessionId ->
+                                    bookingOrigin = AppScreen.DASHBOARD
                                     selectedSessionId = sessionId
                                     currentScreen = AppScreen.BOOKING_DETAIL
                                 },
@@ -151,6 +188,7 @@ class MainActivity : ComponentActivity() {
                                 userEmail = loggedInUserEmail,
                                 onLogout = {
                                     TokenManager.clearToken()
+                                    NotificationStorage.setCurrentUser(null)
                                     currentScreen = AppScreen.AUTH
                                 },
                                 onNavigateToNotifications = {
@@ -161,8 +199,9 @@ class MainActivity : ComponentActivity() {
 
                         AppScreen.APPOINTMENTS -> {
                             AppointmentsScreen(
-                                onBack = { currentScreen = AppScreen.DASHBOARD },
+                                onBack = { currentScreen = homeScreen },
                                 onSessionTap = { sessionId ->
+                                    bookingOrigin = AppScreen.APPOINTMENTS
                                     selectedSessionId = sessionId
                                     currentScreen = AppScreen.BOOKING_DETAIL
                                 },
@@ -171,11 +210,15 @@ class MainActivity : ComponentActivity() {
 
                         AppScreen.NOTIFICATIONS -> {
                             NotificationsScreen(
-                                onBack = { currentScreen = AppScreen.DASHBOARD },
+                                onBack = { currentScreen = homeScreen },
                                 onNotificationTap = { sessionId ->
                                     if (!sessionId.isNullOrBlank()) {
+                                        bookingOrigin = AppScreen.NOTIFICATIONS
                                         selectedSessionId = sessionId
-                                        currentScreen = AppScreen.BOOKING_DETAIL
+                                        currentScreen = if (loggedInUserRole == "MBBS_DOCTOR")
+                                            AppScreen.MBBS_BOOKING_DETAIL
+                                        else
+                                            AppScreen.BOOKING_DETAIL
                                     }
                                 },
                             )
@@ -184,7 +227,14 @@ class MainActivity : ComponentActivity() {
                         AppScreen.BOOKING_DETAIL -> {
                             BookingDetailScreen(
                                 sessionId = selectedSessionId ?: "",
-                                onBack = { currentScreen = AppScreen.DASHBOARD },
+                                onBack = { currentScreen = bookingOrigin },
+                            )
+                        }
+
+                        AppScreen.MBBS_BOOKING_DETAIL -> {
+                            DoctorBookingDetailScreen(
+                                sessionId = selectedSessionId ?: "",
+                                onBack = { currentScreen = bookingOrigin },
                             )
                         }
                     }
@@ -208,16 +258,36 @@ class MainActivity : ComponentActivity() {
 
     private fun registerExistingFcmToken() {
         if (TokenManager.getToken() == null) return
+
+        val storedToken = FcmTokenStorage.getToken()
+        if (storedToken != null) {
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    RetrofitClient.apiService.registerToken(
+                        RegisterTokenRequest(token = storedToken),
+                    )
+                } catch (e: Exception) {
+                    Log.e("MainActivity", "Failed to register stored FCM token: ${e.message}")
+                }
+            }
+            return
+        }
+
         FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
             if (task.isSuccessful) {
                 val token = task.result
+                FcmTokenStorage.saveToken(token)
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
                         RetrofitClient.apiService.registerToken(
                             RegisterTokenRequest(token = token),
                         )
-                    } catch (_: Exception) { }
+                    } catch (e: Exception) {
+                        Log.e("MainActivity", "Failed to register FCM token: ${e.message}")
+                    }
                 }
+            } else {
+                Log.e("MainActivity", "Firebase token retrieval failed: ${task.exception?.message}")
             }
         }
     }

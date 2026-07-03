@@ -159,6 +159,15 @@ data class DiagnosisRecord(
     val created_at: String? = null,
 )
 
+data class PendingNotification(
+    val id: String,
+    val title: String,
+    val body: String,
+    val session_id: String? = null,
+    val type: String? = null,
+    val created_at: String? = null,
+)
+
 data class PrescriptionRecord(
     val id: String,
     val medication_name: String,
@@ -182,6 +191,9 @@ interface AuthApiService {
 
     @POST("notifications/register-token")
     suspend fun registerToken(@Body request: RegisterTokenRequest): Map<String, Any?>
+
+    @GET("notifications/pending")
+    suspend fun getPendingNotifications(): List<PendingNotification>
 
     @GET("bookings/session/{id}")
     suspend fun getBookingSession(@Path("id") sessionId: String): BookingSessionResponse
