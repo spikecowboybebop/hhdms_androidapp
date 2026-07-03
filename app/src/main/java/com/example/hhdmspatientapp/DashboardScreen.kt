@@ -47,7 +47,7 @@ enum class CallStatus {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DashboardScreen(userEmail: String, latestSession: SessionSummary? = null, onLogout: () -> Unit, onNavigateToNotifications: () -> Unit, onNavigateToAppointments: () -> Unit, onNavigateToBookingDetail: (String) -> Unit = {}) {
+fun DashboardScreen(userEmail: String, latestSession: SessionSummary? = null, onLogout: () -> Unit, onNavigateToNotifications: () -> Unit, onNavigateToAppointments: () -> Unit, onNavigateToBookingDetail: (String) -> Unit = {}, onCallEndedRefresh: () -> Unit = {}) {
     val context = LocalContext.current
     var currentCallStatus by remember { mutableStateOf(CallStatus.IDLE) }
 
@@ -61,11 +61,22 @@ fun DashboardScreen(userEmail: String, latestSession: SessionSummary? = null, on
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted -> hasAudioPermission = isGranted }
 
+    var wasPreviouslyOnCall by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
         CallSignalingManager.onCallStateChange = { newStatus -> currentCallStatus = newStatus }
     }
     DisposableEffect(Unit) {
         onDispose { CallSignalingManager.onCallStateChange = null }
+    }
+
+    LaunchedEffect(currentCallStatus) {
+        if (currentCallStatus == CallStatus.RINGING || currentCallStatus == CallStatus.CONNECTED) {
+            wasPreviouslyOnCall = true
+        } else if (wasPreviouslyOnCall && currentCallStatus == CallStatus.IDLE) {
+            wasPreviouslyOnCall = false
+            onCallEndedRefresh()
+        }
     }
 
     val statusCardColor by animateColorAsState(
@@ -194,16 +205,16 @@ fun DashboardScreen(userEmail: String, latestSession: SessionSummary? = null, on
             Spacer(modifier = Modifier.height(24.dp))
 
             // ── Recent Appointment ──
+            Text(
+                text = "Recent Appointment",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TitleBlack,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+            )
             if (latestSession != null) {
                 val s = latestSession!!
                 val firstTicket = s.tickets.firstOrNull()
-                Text(
-                    text = "Recent Appointment",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TitleBlack,
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                )
                 Card(
                     modifier = Modifier.fillMaxWidth().clickable { onNavigateToBookingDetail(s.id) },
                     shape = RoundedCornerShape(16.dp),
@@ -253,8 +264,19 @@ fun DashboardScreen(userEmail: String, latestSession: SessionSummary? = null, on
                         StatusChip(s.status)
                     }
                 }
-                Spacer(modifier = Modifier.height(24.dp))
+            } else {
+                Text(
+                    text = "No appointments have been booked yet.",
+                    fontSize = 13.sp,
+                    color = CoolGray,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(PureWhite, RoundedCornerShape(12.dp))
+                        .padding(24.dp),
+                    textAlign = TextAlign.Center,
+                )
             }
+            Spacer(modifier = Modifier.height(24.dp))
 
             // ── Voice Consultation ──
             Text(

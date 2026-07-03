@@ -47,6 +47,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Read session_id from launch intent (cold start from notification tap)
+        pendingSessionId = intent.getStringExtra("session_id")
+
         TokenManager.init(applicationContext)
         NotificationStorage.init(applicationContext)
         createNotificationChannel()
@@ -84,6 +87,12 @@ class MainActivity : ComponentActivity() {
                                 val sessions = RetrofitClient.apiService.getMySessions()
                                 latestSession = sessions.firstOrNull()
                             } catch (_: Exception) { }
+                        }
+                    }
+
+                    LaunchedEffect(currentScreen) {
+                        if (currentScreen == AppScreen.DASHBOARD) {
+                            sessionLoadKey++
                         }
                     }
 
@@ -133,6 +142,7 @@ class MainActivity : ComponentActivity() {
                                     selectedSessionId = sessionId
                                     currentScreen = AppScreen.BOOKING_DETAIL
                                 },
+                                onCallEndedRefresh = { sessionLoadKey++ },
                             )
                         }
 
