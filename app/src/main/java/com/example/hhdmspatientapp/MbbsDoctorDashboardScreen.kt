@@ -30,6 +30,7 @@ fun MbbsDoctorDashboardScreen(
     userEmail: String,
     onLogout: () -> Unit,
     onNavigateToNotifications: () -> Unit,
+    onNavigateToPatientAssignments: () -> Unit,
 ) {
     val doctorName = userEmail.substringBefore("@")
     val displayName = doctorName.replaceFirstChar { it.uppercase() }
@@ -147,26 +148,52 @@ fun MbbsDoctorDashboardScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // ── Stats Row ──
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StatCard(
-                    value = "—",
-                    label = "Total Patients",
-                    color = TechTeal,
-                    modifier = Modifier.weight(1f),
-                )
-                StatCard(
-                    value = "—",
-                    label = "Today",
-                    color = ClinicalNavy,
-                    modifier = Modifier.weight(1f),
-                )
-                StatCard(
-                    value = "—",
-                    label = "Pending",
-                    color = AlertAmber,
-                    modifier = Modifier.weight(1f),
-                )
+            // ── Patient Assignments ──
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onNavigateToPatientAssignments),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = PureWhite),
+                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(TechTeal.copy(alpha = 0.12f), CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            Icons.Default.People,
+                            contentDescription = null,
+                            tint = TechTeal,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Patient Assignments",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TitleBlack,
+                        )
+                        Text(
+                            text = "View your assigned patients",
+                            fontSize = 12.sp,
+                            color = CoolGray,
+                        )
+                    }
+                    Icon(
+                        Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = CoolGray,
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -309,39 +336,6 @@ fun MbbsDoctorDashboardScreen(
                 color = CoolGray.copy(alpha = 0.6f),
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(bottom = 16.dp),
-            )
-        }
-    }
-}
-
-@Composable
-fun StatCard(
-    value: String,
-    label: String,
-    color: Color,
-    modifier: Modifier = Modifier,
-) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = PureWhite),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                text = value,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                color = color,
-            )
-            Text(
-                text = label,
-                fontSize = 11.sp,
-                color = CoolGray,
-                fontWeight = FontWeight.Medium,
             )
         }
     }

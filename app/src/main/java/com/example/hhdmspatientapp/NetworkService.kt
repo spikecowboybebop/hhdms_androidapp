@@ -139,6 +139,10 @@ data class MbbsPatientSummary(
     val has_emergency_flag: Boolean? = null,
 )
 
+data class MbbsPatientProfileResponse(
+    val patient: MbbsPatientSummary,
+)
+
 data class VitalSignsRecord(
     val id: String,
     val recorded_at: String? = null,
@@ -209,7 +213,7 @@ interface AuthApiService {
     suspend fun getMbbsPatients(): List<MbbsPatientSummary>
 
     @GET("mbbs/patients/{id}")
-    suspend fun getMbbsPatientProfile(@Path("id") patientId: String): MbbsPatientSummary
+    suspend fun getMbbsPatientProfile(@Path("id") patientId: String): MbbsPatientProfileResponse
 
     @GET("mbbs/patients/{id}/vitals")
     suspend fun getMbbsPatientVitals(@Path("id") patientId: String): List<VitalSignsRecord>

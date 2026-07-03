@@ -27,7 +27,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 enum class AppScreen {
-    AUTH, DASHBOARD, NOTIFICATIONS, BOOKING_DETAIL, APPOINTMENTS, MBBS_DOCTOR_DASHBOARD, MBBS_BOOKING_DETAIL
+    AUTH, DASHBOARD, NOTIFICATIONS, BOOKING_DETAIL, APPOINTMENTS, MBBS_DOCTOR_DASHBOARD, MBBS_BOOKING_DETAIL, PATIENT_ASSIGNMENTS, PATIENT_DETAIL
 }
 
 class MainActivity : ComponentActivity() {
@@ -78,6 +78,7 @@ class MainActivity : ComponentActivity() {
                     var loggedInUserEmail by remember { mutableStateOf("") }
                     var loggedInUserRole by remember { mutableStateOf("") }
                     var selectedSessionId by remember { mutableStateOf<String?>(null) }
+                    var selectedPatientId by remember { mutableStateOf<String?>(null) }
                     var latestSession by remember { mutableStateOf<SessionSummary?>(null) }
                     var sessionLoadKey by remember { mutableStateOf(0) }
                     var homeScreen by remember { mutableStateOf(AppScreen.DASHBOARD) }
@@ -194,6 +195,9 @@ class MainActivity : ComponentActivity() {
                                 onNavigateToNotifications = {
                                     currentScreen = AppScreen.NOTIFICATIONS
                                 },
+                                onNavigateToPatientAssignments = {
+                                    currentScreen = AppScreen.PATIENT_ASSIGNMENTS
+                                },
                             )
                         }
 
@@ -235,6 +239,23 @@ class MainActivity : ComponentActivity() {
                             DoctorBookingDetailScreen(
                                 sessionId = selectedSessionId ?: "",
                                 onBack = { currentScreen = bookingOrigin },
+                            )
+                        }
+
+                        AppScreen.PATIENT_ASSIGNMENTS -> {
+                            PatientAssignmentsScreen(
+                                onBack = { currentScreen = AppScreen.MBBS_DOCTOR_DASHBOARD },
+                                onPatientClick = { patientId ->
+                                    selectedPatientId = patientId
+                                    currentScreen = AppScreen.PATIENT_DETAIL
+                                },
+                            )
+                        }
+
+                        AppScreen.PATIENT_DETAIL -> {
+                            PatientDetailScreen(
+                                patientId = selectedPatientId ?: "",
+                                onBack = { currentScreen = AppScreen.PATIENT_ASSIGNMENTS },
                             )
                         }
                     }
