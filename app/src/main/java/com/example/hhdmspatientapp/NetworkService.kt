@@ -56,6 +56,13 @@ data class TicketDetail(
     val additional_meta: Map<String, Any?>? = null,
 )
 
+data class ProviderSummary(
+    val id: String,
+    val first_name_en: String? = null,
+    val last_name_en: String? = null,
+    val specialization: String? = null,
+)
+
 data class Ticket(
     val id: String,
     val ticket_no: String,
@@ -63,9 +70,10 @@ data class Ticket(
     val scheduled_date: String? = null,
     val scheduled_time_slot: String? = null,
     val assigned_provider_id: String? = null,
-    val price: Double? = null,
+    val price: String? = null,
     val status: String,
     val details: TicketDetail? = null,
+    val provider: ProviderSummary? = null,
 )
 
 data class PatientSummary(
@@ -80,12 +88,33 @@ data class BookingSessionResponse(
     val patient_id: String,
     val booked_by: String? = null,
     val agent_id: String? = null,
-    val total_amount: Double? = null,
+    val total_amount: String? = null,
     val status: String,
     val created_at: String? = null,
     val updated_at: String? = null,
     val patient: PatientSummary? = null,
     val tickets: List<Ticket> = emptyList(),
+)
+
+data class TicketSummary(
+    val id: String,
+    val ticket_no: String,
+    val service_type: String,
+    val scheduled_date: String? = null,
+    val scheduled_time_slot: String? = null,
+    val status: String,
+    val price: String? = null,
+)
+
+data class SessionSummary(
+    val id: String,
+    val patient_id: String,
+    val booked_by: String? = null,
+    val total_amount: String? = null,
+    val status: String,
+    val created_at: String? = null,
+    val patient: PatientSummary? = null,
+    val tickets: List<TicketSummary> = emptyList(),
 )
 
 // =============================================================================
@@ -104,6 +133,9 @@ interface AuthApiService {
 
     @GET("bookings/session/{id}")
     suspend fun getBookingSession(@Path("id") sessionId: String): BookingSessionResponse
+
+    @GET("bookings/my-sessions")
+    suspend fun getMySessions(): List<SessionSummary>
 }
 
 // =============================================================================
@@ -111,7 +143,7 @@ interface AuthApiService {
 // =============================================================================
 object RetrofitClient {
     // 10.0.2.2 automatically bridges out to your host development computer's localhost:3000
-    private const val BASE_URL = "http://192.168.0.100:3001/"
+    private const val BASE_URL = "http://192.168.0.109:3001/"
 
     private val okHttpClient = okhttp3.OkHttpClient.Builder()
         .addInterceptor { chain ->

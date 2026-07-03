@@ -47,7 +47,7 @@ enum class CallStatus {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DashboardScreen(userEmail: String, onLogout: () -> Unit, onNavigateToNotifications: () -> Unit) {
+fun DashboardScreen(userEmail: String, latestSession: SessionSummary? = null, onLogout: () -> Unit, onNavigateToNotifications: () -> Unit, onNavigateToAppointments: () -> Unit, onNavigateToBookingDetail: (String) -> Unit = {}) {
     val context = LocalContext.current
     var currentCallStatus by remember { mutableStateOf(CallStatus.IDLE) }
 
@@ -193,6 +193,69 @@ fun DashboardScreen(userEmail: String, onLogout: () -> Unit, onNavigateToNotific
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            // ── Recent Appointment ──
+            if (latestSession != null) {
+                val s = latestSession!!
+                val firstTicket = s.tickets.firstOrNull()
+                Text(
+                    text = "Recent Appointment",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TitleBlack,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                )
+                Card(
+                    modifier = Modifier.fillMaxWidth().clickable { onNavigateToBookingDetail(s.id) },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = PureWhite),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .background(TechTeal.copy(alpha = 0.12f), CircleShape),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                Icons.Default.CalendarMonth,
+                                contentDescription = null,
+                                tint = TechTeal,
+                                modifier = Modifier.size(24.dp),
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = firstTicket?.service_type ?: "Appointment",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = TitleBlack,
+                            )
+                            if (!firstTicket?.scheduled_date.isNullOrBlank()) {
+                                Text(
+                                    text = firstTicket!!.scheduled_date!!.take(10),
+                                    fontSize = 12.sp,
+                                    color = CoolGray,
+                                )
+                            }
+                            if (!firstTicket?.scheduled_time_slot.isNullOrBlank()) {
+                                Text(
+                                    text = firstTicket!!.scheduled_time_slot!!,
+                                    fontSize = 12.sp,
+                                    color = CoolGray,
+                                )
+                            }
+                        }
+                        StatusChip(s.status)
+                    }
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+
             // ── Voice Consultation ──
             Text(
                 text = "Voice Consultation",
@@ -327,7 +390,7 @@ fun DashboardScreen(userEmail: String, onLogout: () -> Unit, onNavigateToNotific
                     label = "Appointments",
                     color = TechTeal,
                     modifier = Modifier.weight(1f),
-                    onClick = { },
+                    onClick = onNavigateToAppointments,
                 )
                 QuickActionCard(
                     icon = Icons.Default.Description,

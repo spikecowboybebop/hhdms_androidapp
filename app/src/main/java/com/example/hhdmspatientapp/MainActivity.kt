@@ -13,6 +13,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -25,7 +26,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 enum class AppScreen {
-    AUTH, DASHBOARD, NOTIFICATIONS, BOOKING_DETAIL
+    AUTH, DASHBOARD, NOTIFICATIONS, BOOKING_DETAIL, APPOINTMENTS
 }
 
 class MainActivity : ComponentActivity() {
@@ -33,13 +34,15 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission(),
     ) { }
 
+    private var pendingSessionId by mutableStateOf<String?>(null)
+    private var notificationIntentCount by mutableStateOf(0)
+
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         notificationIntentCount++
+        pendingSessionId = intent.getStringExtra("session_id")
     }
-
-    private var notificationIntentCount by mutableStateOf(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -69,14 +72,25 @@ class MainActivity : ComponentActivity() {
                     var currentScreen by remember { mutableStateOf(AppScreen.AUTH) }
                     var loggedInUserEmail by remember { mutableStateOf("") }
                     var selectedSessionId by remember { mutableStateOf<String?>(null) }
+                    var latestSession by remember { mutableStateOf<SessionSummary?>(null) }
+                    var sessionLoadKey by remember { mutableStateOf(0) }
 
                     notificationIntentCount // read to trigger recomposition on new intent
-                    val sessionFromIntent = intent?.getStringExtra("session_id")
 
-                    if (!sessionFromIntent.isNullOrBlank() &&
+                    LaunchedEffect(sessionLoadKey) {
+                        if (sessionLoadKey > 0 && TokenManager.getToken() != null) {
+                            try {
+                                val sessions = RetrofitClient.apiService.getMySessions()
+                                latestSession = sessions.firstOrNull()
+                            } catch (_: Exception) { }
+                        }
+                    }
+
+                    if (!pendingSessionId.isNullOrBlank() &&
                         currentScreen == AppScreen.DASHBOARD
                     ) {
-                        selectedSessionId = sessionFromIntent
+                        selectedSessionId = pendingSessionId
+                        pendingSessionId = null
                         currentScreen = AppScreen.BOOKING_DETAIL
                     }
 
@@ -85,24 +99,45 @@ class MainActivity : ComponentActivity() {
                             AuthScreen(onAuthSuccess = { verifiedEmail ->
                                 Toast.makeText(this@MainActivity, "Logged in as $verifiedEmail", Toast.LENGTH_LONG).show()
                                 loggedInUserEmail = verifiedEmail
-                                currentScreen = if (!sessionFromIntent.isNullOrBlank()) {
-                                    selectedSessionId = sessionFromIntent
-                                    AppScreen.BOOKING_DETAIL
+                                val pendingId = pendingSessionId
+                                pendingSessionId = null
+                                if (!pendingId.isNullOrBlank()) {
+                                    selectedSessionId = pendingId
+                                    currentScreen = AppScreen.BOOKING_DETAIL
                                 } else {
-                                    AppScreen.DASHBOARD
+                                    currentScreen = AppScreen.DASHBOARD
                                 }
+                                sessionLoadKey++
                             })
                         }
 
                         AppScreen.DASHBOARD -> {
                             DashboardScreen(
                                 userEmail = loggedInUserEmail,
+                                latestSession = latestSession,
                                 onLogout = {
                                     TokenManager.clearToken()
                                     currentScreen = AppScreen.AUTH
                                 },
                                 onNavigateToNotifications = {
                                     currentScreen = AppScreen.NOTIFICATIONS
+                                },
+                                onNavigateToAppointments = {
+                                    currentScreen = AppScreen.APPOINTMENTS
+                                },
+                                onNavigateToBookingDetail = { sessionId ->
+                                    selectedSessionId = sessionId
+                                    currentScreen = AppScreen.BOOKING_DETAIL
+                                },
+                            )
+                        }
+
+                        AppScreen.APPOINTMENTS -> {
+                            AppointmentsScreen(
+                                onBack = { currentScreen = AppScreen.DASHBOARD },
+                                onSessionTap = { sessionId ->
+                                    selectedSessionId = sessionId
+                                    currentScreen = AppScreen.BOOKING_DETAIL
                                 },
                             )
                         }
@@ -122,7 +157,7 @@ class MainActivity : ComponentActivity() {
                         AppScreen.BOOKING_DETAIL -> {
                             BookingDetailScreen(
                                 sessionId = selectedSessionId ?: "",
-                                onBack = { currentScreen = AppScreen.NOTIFICATIONS },
+                                onBack = { currentScreen = AppScreen.DASHBOARD },
                             )
                         }
                     }
@@ -132,6 +167,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val channel = NotificationChannel(
             HhdmsFirebaseMessagingService.CHANNEL_ID,
             "Service Bookings",

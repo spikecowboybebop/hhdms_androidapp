@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.LocalHospital
 import androidx.compose.material.icons.filled.MedicalServices
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -210,8 +211,9 @@ fun SessionHeaderCard(session: BookingSessionResponse) {
                         fontSize = 12.sp,
                         color = CoolGray,
                     )
+                    val amount = session.total_amount?.toDoubleOrNull() ?: 0.0
                     Text(
-                        text = "৳${String.format("%.2f", session.total_amount ?: 0.0)}",
+                        text = "৳${String.format("%.2f", amount)}",
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
                         color = TitleBlack,
@@ -341,6 +343,35 @@ fun TicketCard(ticket: Ticket) {
                 )
             }
 
+            if (ticket.provider != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.Star,
+                        contentDescription = null,
+                        tint = Color(0xFFF57C00),
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = listOfNotNull(
+                            ticket.provider.first_name_en,
+                            ticket.provider.last_name_en,
+                        ).filter { it.isNotBlank() }.joinToString(" "),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TitleBlack,
+                    )
+                    if (!ticket.provider.specialization.isNullOrBlank()) {
+                        Text(
+                            text = " (${ticket.provider.specialization})",
+                            fontSize = 12.sp,
+                            color = CoolGray,
+                        )
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(8.dp))
 
             Row(
@@ -381,14 +412,15 @@ fun TicketCard(ticket: Ticket) {
                 }
             }
 
-            if (ticket.price != null) {
+            val ticketPrice = ticket.price?.toDoubleOrNull()
+            if (ticketPrice != null) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End,
                 ) {
                     Text(
-                        text = "৳${String.format("%.2f", ticket.price)}",
+                        text = "৳${String.format("%.2f", ticketPrice)}",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = TechTeal,
