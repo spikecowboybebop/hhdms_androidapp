@@ -14,6 +14,11 @@ import kotlinx.coroutines.launch
 
 class HhdmsFirebaseMessagingService : FirebaseMessagingService() {
 
+    override fun onCreate() {
+        super.onCreate()
+        NotificationStorage.init(applicationContext)
+    }
+
     override fun onNewToken(token: String) {
         super.onNewToken(token)
         Log.d(TAG, "New FCM token: $token")
@@ -27,6 +32,16 @@ class HhdmsFirebaseMessagingService : FirebaseMessagingService() {
         val title = message.notification?.title ?: "Aastha Tele-HealthCare"
         val body = message.notification?.body ?: "You have a new update."
         val data = message.data
+
+        NotificationStorage.addNotification(
+            NotificationItem(
+                id = NotificationStorage.nextId(),
+                title = title,
+                body = body,
+                timestamp = System.currentTimeMillis(),
+                sessionId = data["session_id"],
+            ),
+        )
 
         showNotification(title, body, data["session_id"])
     }

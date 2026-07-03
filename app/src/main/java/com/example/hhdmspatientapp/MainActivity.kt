@@ -25,7 +25,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 enum class AppScreen {
-    AUTH, DASHBOARD
+    AUTH, DASHBOARD, NOTIFICATIONS, BOOKING_DETAIL
 }
 
 class MainActivity : ComponentActivity() {
@@ -33,10 +33,19 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission(),
     ) { }
 
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        notificationIntentCount++
+    }
+
+    private var notificationIntentCount by mutableStateOf(0)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         TokenManager.init(applicationContext)
+        NotificationStorage.init(applicationContext)
         createNotificationChannel()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -49,7 +58,6 @@ class MainActivity : ComponentActivity() {
 
         registerExistingFcmToken()
 
-        // 🚀 BABY STEP: Warm up the WebRTC hardware factory and connection pipelines instantly!
         CallSignalingManager.initialize(applicationContext)
 
         setContent {
@@ -58,20 +66,31 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = SoftSlate,
                 ) {
-                    // 1. Set up the local navigation state containers
                     var currentScreen by remember { mutableStateOf(AppScreen.AUTH) }
                     var loggedInUserEmail by remember { mutableStateOf("") }
+                    var selectedSessionId by remember { mutableStateOf<String?>(null) }
 
-                    // 2. Conditionally switch screens based on currentScreen value
+                    notificationIntentCount // read to trigger recomposition on new intent
+                    val sessionFromIntent = intent?.getStringExtra("session_id")
+
+                    if (!sessionFromIntent.isNullOrBlank() &&
+                        currentScreen == AppScreen.DASHBOARD
+                    ) {
+                        selectedSessionId = sessionFromIntent
+                        currentScreen = AppScreen.BOOKING_DETAIL
+                    }
+
                     when (currentScreen) {
                         AppScreen.AUTH -> {
                             AuthScreen(onAuthSuccess = { verifiedEmail ->
-                                // Trigger the toast notification alert
                                 Toast.makeText(this@MainActivity, "Logged in as $verifiedEmail", Toast.LENGTH_LONG).show()
-
-                                // Save the email string and flip state to navigate forward
                                 loggedInUserEmail = verifiedEmail
-                                currentScreen = AppScreen.DASHBOARD
+                                currentScreen = if (!sessionFromIntent.isNullOrBlank()) {
+                                    selectedSessionId = sessionFromIntent
+                                    AppScreen.BOOKING_DETAIL
+                                } else {
+                                    AppScreen.DASHBOARD
+                                }
                             })
                         }
 
@@ -79,10 +98,31 @@ class MainActivity : ComponentActivity() {
                             DashboardScreen(
                                 userEmail = loggedInUserEmail,
                                 onLogout = {
-                                    // Reset state tracker flags to route them backward
                                     TokenManager.clearToken()
                                     currentScreen = AppScreen.AUTH
-                                }
+                                },
+                                onNavigateToNotifications = {
+                                    currentScreen = AppScreen.NOTIFICATIONS
+                                },
+                            )
+                        }
+
+                        AppScreen.NOTIFICATIONS -> {
+                            NotificationsScreen(
+                                onBack = { currentScreen = AppScreen.DASHBOARD },
+                                onNotificationTap = { sessionId ->
+                                    if (!sessionId.isNullOrBlank()) {
+                                        selectedSessionId = sessionId
+                                        currentScreen = AppScreen.BOOKING_DETAIL
+                                    }
+                                },
+                            )
+                        }
+
+                        AppScreen.BOOKING_DETAIL -> {
+                            BookingDetailScreen(
+                                sessionId = selectedSessionId ?: "",
+                                onBack = { currentScreen = AppScreen.NOTIFICATIONS },
                             )
                         }
                     }

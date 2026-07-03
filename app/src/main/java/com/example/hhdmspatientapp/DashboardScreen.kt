@@ -47,7 +47,7 @@ enum class CallStatus {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DashboardScreen(userEmail: String, onLogout: () -> Unit) {
+fun DashboardScreen(userEmail: String, onLogout: () -> Unit, onNavigateToNotifications: () -> Unit) {
     val context = LocalContext.current
     var currentCallStatus by remember { mutableStateOf(CallStatus.IDLE) }
 
@@ -101,7 +101,7 @@ fun DashboardScreen(userEmail: String, onLogout: () -> Unit) {
                         }
                     },
                     actions = {
-                        IconButton(onClick = { }) {
+                        IconButton(onClick = onNavigateToNotifications) {
                             Icon(
                                 Icons.Default.Notifications,
                                 contentDescription = "Notifications",

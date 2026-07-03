@@ -3,7 +3,9 @@ package com.example.hhdmspatientapp // Make sure this matches your project's act
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.Body
+import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.Path
 
 // =============================================================================
 // 1. DATA MODELS MATCHING YOUR NESTJS API CONTRACTS
@@ -49,6 +51,43 @@ data class RegisterTokenRequest(
     val device_type: String = "android",
 )
 
+data class TicketDetail(
+    val id: String? = null,
+    val additional_meta: Map<String, Any?>? = null,
+)
+
+data class Ticket(
+    val id: String,
+    val ticket_no: String,
+    val service_type: String,
+    val scheduled_date: String? = null,
+    val scheduled_time_slot: String? = null,
+    val assigned_provider_id: String? = null,
+    val price: Double? = null,
+    val status: String,
+    val details: TicketDetail? = null,
+)
+
+data class PatientSummary(
+    val id: String,
+    val first_name_en: String? = null,
+    val last_name_en: String? = null,
+    val phone_number: String? = null,
+)
+
+data class BookingSessionResponse(
+    val id: String,
+    val patient_id: String,
+    val booked_by: String? = null,
+    val agent_id: String? = null,
+    val total_amount: Double? = null,
+    val status: String,
+    val created_at: String? = null,
+    val updated_at: String? = null,
+    val patient: PatientSummary? = null,
+    val tickets: List<Ticket> = emptyList(),
+)
+
 // =============================================================================
 // 2. RETROFIT ENDPOINT INTERFACE DEFINITION
 // =============================================================================
@@ -62,6 +101,9 @@ interface AuthApiService {
 
     @POST("notifications/register-token")
     suspend fun registerToken(@Body request: RegisterTokenRequest): Map<String, Any?>
+
+    @GET("bookings/session/{id}")
+    suspend fun getBookingSession(@Path("id") sessionId: String): BookingSessionResponse
 }
 
 // =============================================================================
