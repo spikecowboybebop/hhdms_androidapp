@@ -138,7 +138,7 @@ fun NotificationsScreen(
                     .padding(horizontal = 16.dp)
                     .navigationBarsPadding(),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(bottom = 8.dp),
+                contentPadding = PaddingValues(top = 12.dp, bottom = 8.dp),
             ) {
                 items(notifications, key = { it.id }) { item ->
                     NotificationCard(
