@@ -436,7 +436,7 @@ fun SignUpContent(
 // Main auth screen — bottom pill panel with slide animation
 // ─────────────────────────────────────────────────────────────────
 @Composable
-fun AuthScreen(onAuthSuccess: (String) -> Unit) {
+fun AuthScreen(onAuthSuccess: (email: String, role: String) -> Unit) {
     var screenState by remember { mutableStateOf(ScreenState.LOGIN) }
     var isLoading by remember { mutableStateOf(false) }
 
@@ -528,7 +528,7 @@ fun AuthScreen(onAuthSuccess: (String) -> Unit) {
                             TokenManager.saveToken(response.access_token)
                         }
                         HhdmsFirebaseMessagingService.registerCurrentToken()
-                        onAuthSuccess(emailAddress)
+                        onAuthSuccess(emailAddress, "MOBILE_USER")
                     }
                 } catch (e: Exception) {
                     withContext(Dispatchers.Main) {
@@ -552,7 +552,7 @@ fun AuthScreen(onAuthSuccess: (String) -> Unit) {
                         Log.d("HHDMS_NET", "Login successful: ${response.user.role}")
                         TokenManager.saveToken(response.access_token)
                         HhdmsFirebaseMessagingService.registerCurrentToken()
-                        onAuthSuccess(emailAddress)
+                        onAuthSuccess(emailAddress, response.user.role)
                     }
                 } catch (e: Exception) {
                     withContext(Dispatchers.Main) {

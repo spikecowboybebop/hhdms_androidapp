@@ -117,6 +117,58 @@ data class SessionSummary(
     val tickets: List<TicketSummary> = emptyList(),
 )
 
+// MBBS module models
+data class DoctorProfileResponse(
+    val first_name_en: String,
+    val last_name_en: String,
+    val bmdc_registration: String? = null,
+    val specialization: String? = null,
+    val qualification: String? = null,
+    val signature_url: String? = null,
+)
+
+data class MbbsPatientSummary(
+    val id: String,
+    val mrn: String,
+    val first_name_en: String,
+    val last_name_en: String,
+    val phone_number: String? = null,
+    val date_of_birth: String? = null,
+    val sex: String? = null,
+    val blood_group: String? = null,
+    val has_emergency_flag: Boolean? = null,
+)
+
+data class VitalSignsRecord(
+    val id: String,
+    val recorded_at: String? = null,
+    val blood_pressure_systolic: Int? = null,
+    val blood_pressure_diastolic: Int? = null,
+    val heart_rate: Int? = null,
+    val temperature: Double? = null,
+    val oxygen_saturation: Double? = null,
+    val notes: String? = null,
+)
+
+data class DiagnosisRecord(
+    val id: String,
+    val diagnosis: String,
+    val icd10_code: String? = null,
+    val diagnosis_type: String? = null,
+    val notes: String? = null,
+    val created_at: String? = null,
+)
+
+data class PrescriptionRecord(
+    val id: String,
+    val medication_name: String,
+    val dosage: String? = null,
+    val frequency: String? = null,
+    val duration: String? = null,
+    val instructions: String? = null,
+    val created_at: String? = null,
+)
+
 // =============================================================================
 // 2. RETROFIT ENDPOINT INTERFACE DEFINITION
 // =============================================================================
@@ -136,6 +188,25 @@ interface AuthApiService {
 
     @GET("bookings/my-sessions")
     suspend fun getMySessions(): List<SessionSummary>
+
+    // ── MBBS Doctor Endpoints ──
+    @GET("mbbs/doctor-profile")
+    suspend fun getMbbsDoctorProfile(): DoctorProfileResponse
+
+    @GET("mbbs/patients")
+    suspend fun getMbbsPatients(): List<MbbsPatientSummary>
+
+    @GET("mbbs/patients/{id}")
+    suspend fun getMbbsPatientProfile(@Path("id") patientId: String): MbbsPatientSummary
+
+    @GET("mbbs/patients/{id}/vitals")
+    suspend fun getMbbsPatientVitals(@Path("id") patientId: String): List<VitalSignsRecord>
+
+    @GET("mbbs/patients/{id}/diagnoses")
+    suspend fun getMbbsPatientDiagnoses(@Path("id") patientId: String): List<DiagnosisRecord>
+
+    @GET("mbbs/patients/{id}/prescriptions")
+    suspend fun getMbbsPatientPrescriptions(@Path("id") patientId: String): List<PrescriptionRecord>
 }
 
 // =============================================================================

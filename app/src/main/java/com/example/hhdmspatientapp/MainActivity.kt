@@ -26,7 +26,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 enum class AppScreen {
-    AUTH, DASHBOARD, NOTIFICATIONS, BOOKING_DETAIL, APPOINTMENTS
+    AUTH, DASHBOARD, NOTIFICATIONS, BOOKING_DETAIL, APPOINTMENTS, MBBS_DOCTOR_DASHBOARD
 }
 
 class MainActivity : ComponentActivity() {
@@ -71,6 +71,7 @@ class MainActivity : ComponentActivity() {
                 ) {
                     var currentScreen by remember { mutableStateOf(AppScreen.AUTH) }
                     var loggedInUserEmail by remember { mutableStateOf("") }
+                    var loggedInUserRole by remember { mutableStateOf("") }
                     var selectedSessionId by remember { mutableStateOf<String?>(null) }
                     var latestSession by remember { mutableStateOf<SessionSummary?>(null) }
                     var sessionLoadKey by remember { mutableStateOf(0) }
@@ -96,14 +97,17 @@ class MainActivity : ComponentActivity() {
 
                     when (currentScreen) {
                         AppScreen.AUTH -> {
-                            AuthScreen(onAuthSuccess = { verifiedEmail ->
+                            AuthScreen(onAuthSuccess = { verifiedEmail, role ->
                                 Toast.makeText(this@MainActivity, "Logged in as $verifiedEmail", Toast.LENGTH_LONG).show()
                                 loggedInUserEmail = verifiedEmail
+                                loggedInUserRole = role
                                 val pendingId = pendingSessionId
                                 pendingSessionId = null
                                 if (!pendingId.isNullOrBlank()) {
                                     selectedSessionId = pendingId
                                     currentScreen = AppScreen.BOOKING_DETAIL
+                                } else if (role == "MBBS_DOCTOR") {
+                                    currentScreen = AppScreen.MBBS_DOCTOR_DASHBOARD
                                 } else {
                                     currentScreen = AppScreen.DASHBOARD
                                 }
@@ -128,6 +132,19 @@ class MainActivity : ComponentActivity() {
                                 onNavigateToBookingDetail = { sessionId ->
                                     selectedSessionId = sessionId
                                     currentScreen = AppScreen.BOOKING_DETAIL
+                                },
+                            )
+                        }
+
+                        AppScreen.MBBS_DOCTOR_DASHBOARD -> {
+                            MbbsDoctorDashboardScreen(
+                                userEmail = loggedInUserEmail,
+                                onLogout = {
+                                    TokenManager.clearToken()
+                                    currentScreen = AppScreen.AUTH
+                                },
+                                onNavigateToNotifications = {
+                                    currentScreen = AppScreen.NOTIFICATIONS
                                 },
                             )
                         }
