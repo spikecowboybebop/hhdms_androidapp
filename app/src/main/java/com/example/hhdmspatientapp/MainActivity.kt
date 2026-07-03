@@ -88,7 +88,7 @@ class MainActivity : ComponentActivity() {
                     }
 
                     if (!pendingSessionId.isNullOrBlank() &&
-                        currentScreen == AppScreen.DASHBOARD
+                        (currentScreen == AppScreen.DASHBOARD || currentScreen == AppScreen.MBBS_DOCTOR_DASHBOARD)
                     ) {
                         selectedSessionId = pendingSessionId
                         pendingSessionId = null
