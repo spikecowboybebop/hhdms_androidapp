@@ -40,14 +40,14 @@ fun MbbsDoctorDashboardScreen(
                 title = {
                     Column {
                         Text(
-                            text = "MBBS Dashboard",
+                            text = "Aastha",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                             color = PureWhite,
                         )
                         Text(
-                            text = "Aastha Tele-HealthCare",
-                            fontSize = 14.sp,
+                            text = "Tele-HealthCare",
+                            fontSize = 15.sp,
                             fontWeight = FontWeight.Normal,
                             color = PureWhite.copy(alpha = 0.8f),
                         )
@@ -119,7 +119,7 @@ fun MbbsDoctorDashboardScreen(
                     Spacer(modifier = Modifier.width(16.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Dr. $displayName",
+                            text = "$displayName",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = TitleBlack,
