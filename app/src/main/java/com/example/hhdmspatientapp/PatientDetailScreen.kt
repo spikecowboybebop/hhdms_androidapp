@@ -40,13 +40,6 @@ fun PatientDetailScreen(
     var profile by remember { mutableStateOf<MbbsPatientProfileResponse?>(null) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
-    var isVisiting by remember { mutableStateOf(VisitStorage.getVisitingPatientId() == patientId) }
-    var showVisitConfirm by remember { mutableStateOf(false) }
-<<<<<<< Updated upstream
-    var visitDoctorName by remember { mutableStateOf("") }
-    var visitError by remember { mutableStateOf<String?>(null) }
-=======
->>>>>>> Stashed changes
     val scope = rememberCoroutineScope()
 
     val tabs = listOf("Info", "Vitals", "Diagnosis", "Rx", "Tests", "Referrals", "Documents")
@@ -113,165 +106,12 @@ fun PatientDetailScreen(
                 }
 
                 Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-                    // Mini profile header
                     Card(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                         shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(containerColor = PureWhite),
                         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
                     ) {
-<<<<<<< Updated upstream
-                        Column(
-                            modifier = Modifier.fillMaxWidth().padding(20.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            val initials = buildString {
-                                append(p.first_name_en.firstOrNull() ?: '—')
-                                p.last_name_en?.firstOrNull()?.let { append(it) }
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .size(72.dp)
-                                    .background(
-                                        Brush.horizontalGradient(colors = listOf(TechTeal, ClinicalNavy)),
-                                        CircleShape,
-                                    ),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Text(
-                                    text = initials,
-                                    fontSize = 28.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = PureWhite,
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text(
-                                text = "${p.first_name_en} ${p.last_name_en ?: ""}".trim(),
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TitleBlack,
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = p.mrn,
-                                fontSize = 13.sp,
-                                color = TechTeal,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                            if (p.has_emergency_flag == true) {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        Icons.Default.Warning,
-                                        contentDescription = null,
-                                        tint = ErrorRed,
-                                        modifier = Modifier.size(16.dp),
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = "Emergency Flag",
-                                        fontSize = 12.sp,
-                                        color = ErrorRed,
-                                        fontWeight = FontWeight.Bold,
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // ── Error Banner ──
-                    if (visitError != null) {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = CardDefaults.cardColors(containerColor = ErrorRed.copy(alpha = 0.1f)),
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Icon(
-                                    Icons.Default.ErrorOutline,
-                                    contentDescription = null,
-                                    tint = ErrorRed,
-                                    modifier = Modifier.size(20.dp),
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = visitError!!,
-                                    fontSize = 13.sp,
-                                    color = ErrorRed,
-                                    modifier = Modifier.weight(1f),
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(12.dp))
-                    } else {
-                        Spacer(modifier = Modifier.height(20.dp))
-                    }
-
-                    // ── Visit Patient ──
-                    if (!isVisiting) {
-                        Button(
-                            onClick = { showVisitConfirm = true },
-                            modifier = Modifier.fillMaxWidth().height(54.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = TechTeal,
-                                contentColor = PureWhite,
-                            ),
-                        ) {
-                            Icon(Icons.Default.Person, contentDescription = null)
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text("Visit Patient", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                        }
-                    } else {
-                        val infiniteTransition = rememberInfiniteTransition()
-                        val blinkAlpha by infiniteTransition.animateFloat(
-                            initialValue = 1f,
-                            targetValue = 0.2f,
-                            animationSpec = infiniteRepeatable(
-                                animation = tween(600),
-                                repeatMode = RepeatMode.Reverse,
-                            ),
-                        )
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = TechTeal.copy(alpha = 0.1f)),
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Icon(
-                                    Icons.Default.Person,
-                                    contentDescription = null,
-                                    tint = TechTeal.copy(alpha = blinkAlpha),
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Text(
-                                    text = "You are visiting the patient",
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TechTeal.copy(alpha = blinkAlpha),
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    // ── Patient Info ──
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = PureWhite),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                    ) {
-=======
->>>>>>> Stashed changes
                         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box(
@@ -299,36 +139,31 @@ fun PatientDetailScreen(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
                                 ClinicalMiniButton(
-                                    icon = Icons.Default.FavoriteBorder,
-                                    label = "Vitals",
+                                    icon = Icons.Default.FavoriteBorder, label = "Vitals",
                                     color = Color(0xFFE91E63),
                                     onClick = { onNavigateToVitals(patientId, patientName) },
                                     modifier = Modifier.weight(1f),
                                 )
                                 ClinicalMiniButton(
-                                    icon = Icons.Default.Description,
-                                    label = "Diagnosis",
+                                    icon = Icons.Default.Description, label = "Diagnosis",
                                     color = TechTeal,
                                     onClick = { onNavigateToDiagnosis(patientId, patientName) },
                                     modifier = Modifier.weight(1f),
                                 )
                                 ClinicalMiniButton(
-                                    icon = Icons.Default.LocalPharmacy,
-                                    label = "Rx",
+                                    icon = Icons.Default.LocalPharmacy, label = "Rx",
                                     color = ClinicalNavy,
                                     onClick = { onNavigateToPrescription(patientId, patientName) },
                                     modifier = Modifier.weight(1f),
                                 )
                                 ClinicalMiniButton(
-                                    icon = Icons.Default.Science,
-                                    label = "Tests",
+                                    icon = Icons.Default.Science, label = "Tests",
                                     color = Color(0xFF9C27B0),
                                     onClick = { onNavigateToTestOrders(patientId, patientName) },
                                     modifier = Modifier.weight(1f),
                                 )
                                 ClinicalMiniButton(
-                                    icon = Icons.Default.Share,
-                                    label = "Refer",
+                                    icon = Icons.Default.Share, label = "Refer",
                                     color = Color(0xFFFF9800),
                                     onClick = { onNavigateToReferral(patientId, patientName) },
                                     modifier = Modifier.weight(1f),
@@ -337,40 +172,9 @@ fun PatientDetailScreen(
                         }
                     }
 
-                    // Tab bar
                     ScrollableTabRow(
                         selectedTabIndex = pagerState.currentPage,
                         containerColor = PureWhite,
-<<<<<<< Updated upstream
-                        titleContentColor = TitleBlack,
-                        textContentColor = CoolGray,
-                        title = { Text("Start Visit", fontWeight = FontWeight.Bold) },
-                        text = { Text("Are you sure you want to start visiting this patient?") },
-                        confirmButton = {
-                            Button(onClick = {
-                                showVisitConfirm = false
-                                visitError = null
-                                isVisiting = true
-                                VisitStorage.saveVisitingPatientId(patientId)
-                                scope.launch {
-                                    try {
-                                        val result = RetrofitClient.apiService.startPatientVisit(patientId)
-                                        visitDoctorName = (result["doctor_name"] as? String) ?: ""
-                                    } catch (e: Exception) {
-                                        visitError = e.message ?: "Failed to start visit. Patient may not have a linked account."
-                                    }
-                                }
-                            }) {
-                                Text("Yes, Start Journey", color = PureWhite)
-                            }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { showVisitConfirm = false }) {
-                                Text("Cancel", color = CoolGray)
-                            }
-                        },
-                    )
-=======
                         contentColor = TechTeal,
                         edgePadding = 8.dp,
                         divider = {},
@@ -381,8 +185,7 @@ fun PatientDetailScreen(
                                 onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
                                 text = {
                                     Text(
-                                        title,
-                                        fontSize = 12.sp,
+                                        title, fontSize = 12.sp,
                                         fontWeight = if (pagerState.currentPage == index) FontWeight.Bold else FontWeight.Normal,
                                         color = if (pagerState.currentPage == index) TechTeal else CoolGray,
                                     )
@@ -391,7 +194,6 @@ fun PatientDetailScreen(
                         }
                     }
 
-                    // Pager content
                     HorizontalPager(
                         state = pagerState,
                         modifier = Modifier.fillMaxSize(),
@@ -406,7 +208,6 @@ fun PatientDetailScreen(
                             6 -> PatientDocumentsTab(profile!!.documents)
                         }
                     }
->>>>>>> Stashed changes
                 }
             }
         }
