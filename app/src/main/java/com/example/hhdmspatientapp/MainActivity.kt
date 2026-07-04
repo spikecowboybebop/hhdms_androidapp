@@ -34,7 +34,8 @@ enum class AppScreen {
     AUTH, DASHBOARD, NOTIFICATIONS, BOOKING_DETAIL, APPOINTMENTS,
     MBBS_DOCTOR_DASHBOARD, MBBS_BOOKING_DETAIL, PATIENT_ASSIGNMENTS,
     PATIENT_DETAIL, DOCTOR_TRACKING,
-    MBBS_VITALS, MBBS_DIAGNOSIS, MBBS_PRESCRIPTION, MBBS_TEST_ORDERS, MBBS_REFERRAL
+    MBBS_VITALS, MBBS_DIAGNOSIS, MBBS_PRESCRIPTION, MBBS_TEST_ORDERS, MBBS_REFERRAL,
+    CAREGIVER_DASHBOARD
 }
 
 class MainActivity : ComponentActivity() {
@@ -163,18 +164,18 @@ class MainActivity : ComponentActivity() {
                     }
 
                     LaunchedEffect(currentScreen) {
-                        if (currentScreen == AppScreen.DASHBOARD || currentScreen == AppScreen.MBBS_DOCTOR_DASHBOARD) {
+                        if (currentScreen == AppScreen.DASHBOARD || currentScreen == AppScreen.MBBS_DOCTOR_DASHBOARD || currentScreen == AppScreen.CAREGIVER_DASHBOARD) {
                             sessionLoadKey++
                         }
                     }
 
                     if (!pendingSessionId.isNullOrBlank() &&
-                        (currentScreen == AppScreen.DASHBOARD || currentScreen == AppScreen.MBBS_DOCTOR_DASHBOARD)
+                        (currentScreen == AppScreen.DASHBOARD || currentScreen == AppScreen.MBBS_DOCTOR_DASHBOARD || currentScreen == AppScreen.CAREGIVER_DASHBOARD)
                     ) {
                         bookingOrigin = homeScreen
                         selectedSessionId = pendingSessionId
                         pendingSessionId = null
-                        currentScreen = if (loggedInUserRole == "MBBS_DOCTOR")
+                        currentScreen = if (loggedInUserRole == "MBBS_DOCTOR" || loggedInUserRole == "CAREGIVER")
                             AppScreen.MBBS_BOOKING_DETAIL
                         else
                             AppScreen.BOOKING_DETAIL
@@ -192,16 +193,23 @@ class MainActivity : ComponentActivity() {
                                 val pendingId = pendingSessionId
                                 pendingSessionId = null
                                 if (!pendingId.isNullOrBlank()) {
-                                    homeScreen = if (role == "MBBS_DOCTOR") AppScreen.MBBS_DOCTOR_DASHBOARD else AppScreen.DASHBOARD
+                                    homeScreen = when (role) {
+                                        "MBBS_DOCTOR" -> AppScreen.MBBS_DOCTOR_DASHBOARD
+                                        "CAREGIVER" -> AppScreen.CAREGIVER_DASHBOARD
+                                        else -> AppScreen.DASHBOARD
+                                    }
                                     bookingOrigin = homeScreen
                                     selectedSessionId = pendingId
-                                    currentScreen = if (role == "MBBS_DOCTOR")
+                                    currentScreen = if (role == "MBBS_DOCTOR" || role == "CAREGIVER")
                                         AppScreen.MBBS_BOOKING_DETAIL
                                     else
                                         AppScreen.BOOKING_DETAIL
                                 } else if (role == "MBBS_DOCTOR") {
                                     homeScreen = AppScreen.MBBS_DOCTOR_DASHBOARD
                                     currentScreen = AppScreen.MBBS_DOCTOR_DASHBOARD
+                                } else if (role == "CAREGIVER") {
+                                    homeScreen = AppScreen.CAREGIVER_DASHBOARD
+                                    currentScreen = AppScreen.CAREGIVER_DASHBOARD
                                 } else {
                                     homeScreen = AppScreen.DASHBOARD
                                     currentScreen = AppScreen.DASHBOARD
@@ -382,6 +390,16 @@ class MainActivity : ComponentActivity() {
                                 patientId = selectedPatientId ?: "",
                                 patientName = selectedPatientName,
                                 onBack = { currentScreen = AppScreen.PATIENT_DETAIL },
+                            )
+                        }
+
+                        AppScreen.CAREGIVER_DASHBOARD -> {
+                            CaregiverDashboardScreen(
+                                onLogout = {
+                                    TokenManager.clearToken()
+                                    NotificationStorage.setCurrentUser(null)
+                                    currentScreen = AppScreen.AUTH
+                                },
                             )
                         }
 

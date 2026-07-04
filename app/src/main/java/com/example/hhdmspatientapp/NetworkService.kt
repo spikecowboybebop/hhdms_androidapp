@@ -440,6 +440,95 @@ data class DocumentTextResponse(
 )
 
 // =============================================================================
+// CAREGIVER MODULE — Data Models
+// =============================================================================
+
+// ── Caregiver Profile ──
+data class CaregiverProfileResponse(
+    val user_id: String,
+    val is_available: Boolean = true,
+    val verification_status: String = "PENDING",
+    val user: CaregiverUser,
+    val patient_assignments: List<CaregiverAssignment> = emptyList(),
+)
+
+data class CaregiverUser(
+    val email: String,
+    val firstNameEn: String,
+    val lastNameEn: String,
+)
+
+data class CaregiverAssignment(
+    val patient: CaregiverPatient,
+)
+
+// ── Caregiver Patient ──
+data class CaregiverPatient(
+    val id: String,
+    val mrn: String,
+    val first_name_en: String,
+    val last_name_en: String,
+    val sex: String? = null,
+    val blood_group: String? = null,
+    val phone_number: String? = null,
+    val address_line1: String? = null,
+    val district: String? = null,
+    val service_type: String? = null,
+    val patient_type: String? = null,
+)
+
+// ── Activity Log ──
+data class ActivityLog(
+    val id: String,
+    val caregiver_id: String? = null,
+    val patient_id: String? = null,
+    val activity_type: String,
+    val notes: String? = null,
+    val created_at: String? = null,
+    val patient: ActivityLogPatient? = null,
+)
+
+data class ActivityLogPatient(
+    val id: String,
+    val first_name_en: String? = null,
+    val last_name_en: String? = null,
+)
+
+// ── Condition Report ──
+data class ConditionReport(
+    val id: String,
+    val caregiver_id: String? = null,
+    val patient_id: String? = null,
+    val report_type: String,
+    val description: String,
+    val severity: String = "MODERATE",
+    val alert_sent_to_nurse: Boolean = false,
+    val alert_sent_to_doctor: Boolean = false,
+    val created_at: String? = null,
+    val patient: ConditionReportPatient? = null,
+)
+
+data class ConditionReportPatient(
+    val id: String,
+    val first_name_en: String? = null,
+    val last_name_en: String? = null,
+)
+
+// ── Caregiver Requests ──
+data class CreateActivityLogRequest(
+    val patient_id: String,
+    val activity_type: String,
+    val notes: String? = null,
+)
+
+data class CreateConditionReportRequest(
+    val patient_id: String,
+    val report_type: String,
+    val description: String,
+    val severity: String? = null,
+)
+
+// =============================================================================
 // 2. RETROFIT ENDPOINT INTERFACE DEFINITION
 // =============================================================================
 interface AuthApiService {
@@ -547,6 +636,29 @@ interface AuthApiService {
 
     @GET("mbbs/patients/{id}/documents/{docId}/text")
     suspend fun getDocumentText(@Path("id") patientId: String, @Path("docId") docId: String): DocumentTextResponse
+
+    // ── Caregiver Endpoints ──
+
+    @GET("caregiver/profile")
+    suspend fun getCaregiverProfile(): CaregiverProfileResponse
+
+    @GET("caregiver/patients")
+    suspend fun getCaregiverPatients(): List<CaregiverPatient>
+
+    @POST("caregiver/activities")
+    suspend fun createCaregiverActivity(@Body request: CreateActivityLogRequest): ActivityLog
+
+    @GET("caregiver/activities")
+    suspend fun getCaregiverActivities(@Query("patient_id") patientId: String? = null): List<ActivityLog>
+
+    @POST("caregiver/condition-reports")
+    suspend fun createConditionReport(@Body request: CreateConditionReportRequest): ConditionReport
+
+    @GET("caregiver/condition-reports")
+    suspend fun getCaregiverConditionReports(@Query("patient_id") patientId: String? = null): List<ConditionReport>
+
+    @POST("caregiver/condition-reports/{id}/alert/{target}")
+    suspend fun sendCaregiverAlert(@Path("id") reportId: String, @Path("target") target: String): Map<String, Any?>
 }
 
 // =============================================================================
