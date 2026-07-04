@@ -3,11 +3,14 @@ package com.example.hhdmspatientapp
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
+import androidx.core.app.NotificationCompat
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -24,6 +27,7 @@ import com.example.hhdmspatientapp.ui.theme.*
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 enum class AppScreen {
@@ -116,6 +120,7 @@ class MainActivity : ComponentActivity() {
                                             sessionId = n.session_id,
                                         )
                                     )
+                                    showLocalNotification(n.title, n.body, n.session_id)
                                     if (n.type == "doctor_coming") {
                                         val doctorName = n.body.substringBefore(" is coming to visit you")
                                         VisitStorage.saveVisitInfo(doctorName)
@@ -125,11 +130,36 @@ class MainActivity : ComponentActivity() {
                                 }
 
                             } catch (_: Exception) { }
+
+                            // Periodic polling while on a dashboard screen
+                            while (true) {
+                                delay(15_000)
+                                try {
+                                    val pending = RetrofitClient.apiService.getPendingNotifications()
+                                    for (n in pending) {
+                                        NotificationStorage.addNotification(
+                                            NotificationItem(
+                                                id = NotificationStorage.nextId(),
+                                                title = n.title,
+                                                body = n.body,
+                                                timestamp = System.currentTimeMillis(),
+                                                sessionId = n.session_id,
+                                            )
+                                        )
+                                        showLocalNotification(n.title, n.body, n.session_id)
+                                        if (n.type == "doctor_coming") {
+                                            val doctorName = n.body.substringBefore(" is coming to visit you")
+                                            VisitStorage.saveVisitInfo(doctorName)
+                                            latestDoctorName = doctorName
+                                        }
+                                    }
+                                } catch (_: Exception) { }
+                            }
                         }
                     }
 
                     LaunchedEffect(currentScreen) {
-                        if (currentScreen == AppScreen.DASHBOARD) {
+                        if (currentScreen == AppScreen.DASHBOARD || currentScreen == AppScreen.MBBS_DOCTOR_DASHBOARD) {
                             sessionLoadKey++
                         }
                     }
@@ -153,6 +183,7 @@ class MainActivity : ComponentActivity() {
                                 NotificationStorage.setCurrentUser(verifiedEmail)
                                 loggedInUserEmail = verifiedEmail
                                 loggedInUserRole = role
+                                HhdmsFirebaseMessagingService.registerCurrentToken()
 
                                 val pendingId = pendingSessionId
                                 pendingSessionId = null
@@ -289,6 +320,27 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun showLocalNotification(title: String, body: String, sessionId: String?) {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            sessionId?.let { putExtra("session_id", it) }
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            this, 0, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val notification = NotificationCompat.Builder(this, HhdmsFirebaseMessagingService.CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(pendingIntent)
+            .build()
+        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        nm.notify(System.currentTimeMillis().toInt(), notification)
     }
 
     private fun createNotificationChannel() {

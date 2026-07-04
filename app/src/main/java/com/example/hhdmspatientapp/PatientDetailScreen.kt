@@ -39,6 +39,7 @@ fun PatientDetailScreen(
     var isVisiting by remember { mutableStateOf(VisitStorage.getVisitingPatientId() == patientId) }
     var showVisitConfirm by remember { mutableStateOf(false) }
     var visitDoctorName by remember { mutableStateOf("") }
+    var visitError by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(patientId) {
@@ -192,7 +193,36 @@ fun PatientDetailScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    // ── Error Banner ──
+                    if (visitError != null) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = ErrorRed.copy(alpha = 0.1f)),
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    Icons.Default.ErrorOutline,
+                                    contentDescription = null,
+                                    tint = ErrorRed,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = visitError!!,
+                                    fontSize = 13.sp,
+                                    color = ErrorRed,
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                    } else {
+                        Spacer(modifier = Modifier.height(20.dp))
+                    }
 
                     // ── Visit Patient ──
                     if (!isVisiting) {
@@ -329,13 +359,16 @@ fun PatientDetailScreen(
                         confirmButton = {
                             Button(onClick = {
                                 showVisitConfirm = false
+                                visitError = null
                                 isVisiting = true
                                 VisitStorage.saveVisitingPatientId(patientId)
                                 scope.launch {
                                     try {
                                         val result = RetrofitClient.apiService.startPatientVisit(patientId)
                                         visitDoctorName = (result["doctor_name"] as? String) ?: ""
-                                    } catch (_: Exception) { }
+                                    } catch (e: Exception) {
+                                        visitError = e.message ?: "Failed to start visit. Patient may not have a linked account."
+                                    }
                                 }
                             }) {
                                 Text("Yes, Start Journey", color = PureWhite)
