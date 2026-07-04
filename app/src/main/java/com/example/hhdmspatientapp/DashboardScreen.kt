@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.MedicalServices
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.SupportAgent
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -49,7 +50,7 @@ enum class CallStatus {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DashboardScreen(userEmail: String, latestSession: SessionSummary? = null, doctorName: String? = null, onLogout: () -> Unit, onNavigateToNotifications: () -> Unit, onNavigateToAppointments: () -> Unit, onNavigateToBookingDetail: (String) -> Unit = {}, onCallEndedRefresh: () -> Unit = {}) {
+fun DashboardScreen(userEmail: String, latestSession: SessionSummary? = null, doctorName: String? = null, onLogout: () -> Unit, onNavigateToNotifications: () -> Unit, onNavigateToAppointments: () -> Unit, onNavigateToBookingDetail: (String) -> Unit = {}, onNavigateToDoctorTracking: () -> Unit = {}, onCallEndedRefresh: () -> Unit = {}) {
     val context = LocalContext.current
     var currentCallStatus by remember { mutableStateOf(CallStatus.IDLE) }
     val visitDoctorName = remember { mutableStateOf(doctorName ?: VisitStorage.getVisitDoctorName()) }
@@ -223,7 +224,7 @@ fun DashboardScreen(userEmail: String, latestSession: SessionSummary? = null, do
             // ── Doctor Visit Banner ──
             if (!visitDoctorName.value.isNullOrBlank()) {
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().clickable { onNavigateToDoctorTracking() },
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = TechTeal.copy(alpha = 0.12f)),
                 ) {
@@ -251,17 +252,12 @@ fun DashboardScreen(userEmail: String, latestSession: SessionSummary? = null, do
                                 color = TitleBlack,
                             )
                         }
-                        IconButton(onClick = {
-                            VisitStorage.clearVisit()
-                            visitDoctorName.value = null
-                        }) {
-                            Icon(
-                                Icons.Default.Close,
-                                contentDescription = "Dismiss",
-                                tint = CoolGray,
-                                modifier = Modifier.size(20.dp),
-                            )
-                        }
+                        Icon(
+                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = "Track",
+                            tint = TechTeal,
+                            modifier = Modifier.size(24.dp),
+                        )
                     }
                 }
                 Spacer(modifier = Modifier.height(20.dp))

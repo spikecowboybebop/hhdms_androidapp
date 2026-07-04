@@ -27,7 +27,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 enum class AppScreen {
-    AUTH, DASHBOARD, NOTIFICATIONS, BOOKING_DETAIL, APPOINTMENTS, MBBS_DOCTOR_DASHBOARD, MBBS_BOOKING_DETAIL, PATIENT_ASSIGNMENTS, PATIENT_DETAIL
+    AUTH, DASHBOARD, NOTIFICATIONS, BOOKING_DETAIL, APPOINTMENTS, MBBS_DOCTOR_DASHBOARD, MBBS_BOOKING_DETAIL, PATIENT_ASSIGNMENTS, PATIENT_DETAIL, DOCTOR_TRACKING
 }
 
 class MainActivity : ComponentActivity() {
@@ -55,6 +55,7 @@ class MainActivity : ComponentActivity() {
         NotificationStorage.init(applicationContext)
         FcmTokenStorage.init(applicationContext)
         VisitStorage.init(applicationContext)
+        org.osmdroid.config.Configuration.getInstance().userAgentValue = packageName
         createNotificationChannel()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -82,6 +83,7 @@ class MainActivity : ComponentActivity() {
                     var selectedPatientId by remember { mutableStateOf<String?>(null) }
                     var latestSession by remember { mutableStateOf<SessionSummary?>(null) }
                     var latestDoctorName by remember { mutableStateOf<String?>(null) }
+                    var trackingDoctorName by remember { mutableStateOf("") }
                     var sessionLoadKey by remember { mutableStateOf(0) }
                     var homeScreen by remember { mutableStateOf(AppScreen.DASHBOARD) }
                     var bookingOrigin by remember { mutableStateOf(AppScreen.DASHBOARD) }
@@ -93,9 +95,17 @@ class MainActivity : ComponentActivity() {
                             try {
                                 val sessions = RetrofitClient.apiService.getMySessions()
                                 latestSession = sessions.firstOrNull()
+                                val hasActiveSession = sessions.any { s ->
+                                    s.status != "COMPLETED" && s.status != "CANCELLED"
+                                }
+                                if (!hasActiveSession) {
+                                    VisitStorage.clearVisit()
+                                    latestDoctorName = null
+                                }
                             } catch (_: Exception) { }
                             try {
                                 val pending = RetrofitClient.apiService.getPendingNotifications()
+                                var foundDoctorComing = false
                                 for (n in pending) {
                                     NotificationStorage.addNotification(
                                         NotificationItem(
@@ -109,11 +119,11 @@ class MainActivity : ComponentActivity() {
                                     if (n.type == "doctor_coming") {
                                         val doctorName = n.body.substringBefore(" is coming to visit you")
                                         VisitStorage.saveVisitInfo(doctorName)
-                                        if (latestDoctorName == null) {
-                                            latestDoctorName = doctorName
-                                        }
+                                        latestDoctorName = doctorName
+                                        foundDoctorComing = true
                                     }
                                 }
+
                             } catch (_: Exception) { }
                         }
                     }
@@ -185,6 +195,10 @@ class MainActivity : ComponentActivity() {
                                     bookingOrigin = AppScreen.DASHBOARD
                                     selectedSessionId = sessionId
                                     currentScreen = AppScreen.BOOKING_DETAIL
+                                },
+                                onNavigateToDoctorTracking = {
+                                    trackingDoctorName = latestDoctorName ?: ""
+                                    currentScreen = AppScreen.DOCTOR_TRACKING
                                 },
                                 onCallEndedRefresh = { sessionLoadKey++ },
                             )
@@ -262,6 +276,13 @@ class MainActivity : ComponentActivity() {
                             PatientDetailScreen(
                                 patientId = selectedPatientId ?: "",
                                 onBack = { currentScreen = AppScreen.PATIENT_ASSIGNMENTS },
+                            )
+                        }
+
+                        AppScreen.DOCTOR_TRACKING -> {
+                            DoctorTrackingScreen(
+                                doctorName = trackingDoctorName,
+                                onBack = { currentScreen = homeScreen },
                             )
                         }
                     }

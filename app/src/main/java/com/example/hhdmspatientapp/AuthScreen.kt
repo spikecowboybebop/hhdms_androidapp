@@ -494,8 +494,8 @@ fun AuthScreen(onAuthSuccess: (email: String, role: String) -> Unit) {
             if (phoneNumber.isBlank()) {
                 phoneError = "Phone number is required"
                 valid = false
-            } else if (phoneNumber.length < 11) {
-                phoneError = "Enter a valid 11-digit phone number"
+            } else if (phoneNumber.length < 10) {
+                phoneError = "Enter a valid 10 or 11-digit phone number"
                 valid = false
             }
         }
@@ -516,7 +516,7 @@ fun AuthScreen(onAuthSuccess: (email: String, role: String) -> Unit) {
                         SignupRequest(
                             first_name_en = firstName,
                             last_name_en = lastName,
-                            phone_number = phoneNumber,
+                            phone_number = if (phoneNumber.length == 10) "0$phoneNumber" else phoneNumber,
                             email = emailAddress,
                             password = passwordInput,
                         ),
