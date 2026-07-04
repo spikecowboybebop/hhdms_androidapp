@@ -172,6 +172,51 @@ fun PatientDetailScreen(
                         }
                     }
 
+                    if (!p.has_emergency_flag) {
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        var isVisiting by remember { mutableStateOf(VisitStorage.getVisitingPatientId() == patientId) }
+                        var visitLoading by remember { mutableStateOf(false) }
+
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    visitLoading = true
+                                    try {
+                                        RetrofitClient.apiService.startPatientVisit(patientId)
+                                        VisitStorage.saveVisitingPatientId(patientId)
+                                        isVisiting = true
+                                    } catch (_: Exception) { }
+                                    visitLoading = false
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                                .height(48.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isVisiting) TechTeal.copy(alpha = 0.15f) else TechTeal,
+                                contentColor = if (isVisiting) TechTeal else PureWhite,
+                            ),
+                            enabled = !visitLoading && !isVisiting,
+                        ) {
+                            if (visitLoading) {
+                                CircularProgressIndicator(color = PureWhite, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                            } else if (isVisiting) {
+                                Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("You are visiting this patient", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            } else {
+                                Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Start Visit — Notify Patient", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
                     ScrollableTabRow(
                         selectedTabIndex = pagerState.currentPage,
                         containerColor = PureWhite,
