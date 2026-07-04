@@ -136,6 +136,10 @@ class MainActivity : ComponentActivity() {
                                                     sessionId = n.session_id,
                                                 )
                                             )
+                                            if (n.type == "doctor_coming") {
+                                                val doctorName = n.body.substringBefore(" is coming to visit you")
+                                                VisitStorage.saveVisitInfo(doctorName)
+                                            }
                                         }
                                     } catch (_: Exception) { }
                                 }
