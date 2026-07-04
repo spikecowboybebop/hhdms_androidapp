@@ -54,6 +54,7 @@ class MainActivity : ComponentActivity() {
         TokenManager.init(applicationContext)
         NotificationStorage.init(applicationContext)
         FcmTokenStorage.init(applicationContext)
+        VisitStorage.init(applicationContext)
         createNotificationChannel()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

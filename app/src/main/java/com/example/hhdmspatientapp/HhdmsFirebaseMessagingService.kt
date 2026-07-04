@@ -18,6 +18,7 @@ class HhdmsFirebaseMessagingService : FirebaseMessagingService() {
         super.onCreate()
         NotificationStorage.init(applicationContext)
         FcmTokenStorage.init(applicationContext)
+        VisitStorage.init(applicationContext)
     }
 
     override fun onNewToken(token: String) {
@@ -46,6 +47,12 @@ class HhdmsFirebaseMessagingService : FirebaseMessagingService() {
         )
 
         showNotification(title, body, data["session_id"])
+
+        if (data["type"] == "doctor_coming") {
+            val doctorName = body.substringBefore(" is coming to visit you")
+            VisitStorage.saveVisitInfo(doctorName)
+            Log.d(TAG, "Doctor visit saved: $doctorName")
+        }
     }
 
     private fun showNotification(title: String, body: String, sessionId: String?) {

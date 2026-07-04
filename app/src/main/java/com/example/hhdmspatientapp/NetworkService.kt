@@ -215,6 +215,9 @@ interface AuthApiService {
     @GET("mbbs/patients/{id}")
     suspend fun getMbbsPatientProfile(@Path("id") patientId: String): MbbsPatientProfileResponse
 
+    @POST("mbbs/patients/{id}/start-visit")
+    suspend fun startPatientVisit(@Path("id") patientId: String): Map<String, Any?>
+
     @GET("mbbs/patients/{id}/vitals")
     suspend fun getMbbsPatientVitals(@Path("id") patientId: String): List<VitalSignsRecord>
 
@@ -230,7 +233,7 @@ interface AuthApiService {
 // =============================================================================
 object RetrofitClient {
     // 10.0.2.2 automatically bridges out to your host development computer's localhost:3000
-    private const val BASE_URL = "http://192.168.0.109:3001/"
+    private const val BASE_URL = "http://192.168.0.101:3001/"
 
     private val okHttpClient = okhttp3.OkHttpClient.Builder()
         .addInterceptor { chain ->

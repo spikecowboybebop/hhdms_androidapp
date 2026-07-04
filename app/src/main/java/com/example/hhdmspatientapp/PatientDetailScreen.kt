@@ -1,5 +1,10 @@
 package com.example.hhdmspatientapp
 
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -19,6 +24,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import com.example.hhdmspatientapp.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -30,6 +36,10 @@ fun PatientDetailScreen(
     var patient by remember { mutableStateOf<MbbsPatientSummary?>(null) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    var isVisiting by remember { mutableStateOf(VisitStorage.getVisitingPatientId() == patientId) }
+    var showVisitConfirm by remember { mutableStateOf(false) }
+    var visitDoctorName by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(patientId) {
         try {
@@ -184,6 +194,58 @@ fun PatientDetailScreen(
 
                     Spacer(modifier = Modifier.height(20.dp))
 
+                    // ── Visit Patient ──
+                    if (!isVisiting) {
+                        Button(
+                            onClick = { showVisitConfirm = true },
+                            modifier = Modifier.fillMaxWidth().height(54.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = TechTeal,
+                                contentColor = PureWhite,
+                            ),
+                        ) {
+                            Icon(Icons.Default.Person, contentDescription = null)
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text("Visit Patient", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        }
+                    } else {
+                        val infiniteTransition = rememberInfiniteTransition()
+                        val blinkAlpha by infiniteTransition.animateFloat(
+                            initialValue = 1f,
+                            targetValue = 0.2f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(600),
+                                repeatMode = RepeatMode.Reverse,
+                            ),
+                        )
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = TechTeal.copy(alpha = 0.1f)),
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    Icons.Default.Person,
+                                    contentDescription = null,
+                                    tint = TechTeal.copy(alpha = blinkAlpha),
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = "You are visiting the patient",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TechTeal.copy(alpha = blinkAlpha),
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
                     // ── Patient Info ──
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -254,6 +316,37 @@ fun PatientDetailScreen(
                     }
 
                     Spacer(modifier = Modifier.height(32.dp))
+                }
+
+                if (showVisitConfirm) {
+                    AlertDialog(
+                        onDismissRequest = { showVisitConfirm = false },
+                        containerColor = PureWhite,
+                        titleContentColor = TitleBlack,
+                        textContentColor = CoolGray,
+                        title = { Text("Start Visit", fontWeight = FontWeight.Bold) },
+                        text = { Text("Are you sure you want to start visiting this patient?") },
+                        confirmButton = {
+                            Button(onClick = {
+                                showVisitConfirm = false
+                                isVisiting = true
+                                VisitStorage.saveVisitingPatientId(patientId)
+                                scope.launch {
+                                    try {
+                                        val result = RetrofitClient.apiService.startPatientVisit(patientId)
+                                        visitDoctorName = (result["doctor_name"] as? String) ?: ""
+                                    } catch (_: Exception) { }
+                                }
+                            }) {
+                                Text("Yes, Start Journey", color = PureWhite)
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showVisitConfirm = false }) {
+                                Text("Cancel", color = CoolGray)
+                            }
+                        },
+                    )
                 }
             }
         }

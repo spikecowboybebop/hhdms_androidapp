@@ -20,7 +20,9 @@ import androidx.compose.material.icons.filled.CallEnd
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.LocalPharmacy
 import androidx.compose.material.icons.filled.MedicalServices
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.SupportAgent
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -50,6 +52,7 @@ enum class CallStatus {
 fun DashboardScreen(userEmail: String, latestSession: SessionSummary? = null, onLogout: () -> Unit, onNavigateToNotifications: () -> Unit, onNavigateToAppointments: () -> Unit, onNavigateToBookingDetail: (String) -> Unit = {}, onCallEndedRefresh: () -> Unit = {}) {
     val context = LocalContext.current
     var currentCallStatus by remember { mutableStateOf(CallStatus.IDLE) }
+    val visitDoctorName = remember { mutableStateOf(VisitStorage.getVisitDoctorName()) }
 
     var hasAudioPermission by remember {
         mutableStateOf(
@@ -203,6 +206,53 @@ fun DashboardScreen(userEmail: String, latestSession: SessionSummary? = null, on
             }
 
             Spacer(modifier = Modifier.height(24.dp))
+
+            // ── Doctor Visit Banner ──
+            if (!visitDoctorName.value.isNullOrBlank()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = TechTeal.copy(alpha = 0.12f)),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            Icons.Default.Person,
+                            contentDescription = null,
+                            tint = TechTeal,
+                            modifier = Modifier.size(24.dp),
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Doctor Coming",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TechTeal,
+                            )
+                            Text(
+                                text = "${visitDoctorName.value} is coming to visit you.",
+                                fontSize = 13.sp,
+                                color = TitleBlack,
+                            )
+                        }
+                        IconButton(onClick = {
+                            VisitStorage.clearVisit()
+                            visitDoctorName.value = null
+                        }) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Dismiss",
+                                tint = CoolGray,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(20.dp))
+            }
 
             // ── Recent Appointment ──
             Text(
