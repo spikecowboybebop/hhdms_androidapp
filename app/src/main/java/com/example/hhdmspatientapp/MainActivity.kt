@@ -31,7 +31,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 enum class AppScreen {
-    AUTH, DASHBOARD, NOTIFICATIONS, BOOKING_DETAIL, APPOINTMENTS, MBBS_DOCTOR_DASHBOARD, MBBS_BOOKING_DETAIL, PATIENT_ASSIGNMENTS, PATIENT_DETAIL, DOCTOR_TRACKING
+    AUTH, DASHBOARD, NOTIFICATIONS, BOOKING_DETAIL, APPOINTMENTS,
+    MBBS_DOCTOR_DASHBOARD, MBBS_BOOKING_DETAIL, PATIENT_ASSIGNMENTS,
+    PATIENT_DETAIL, DOCTOR_TRACKING,
+    MBBS_VITALS, MBBS_DIAGNOSIS, MBBS_PRESCRIPTION, MBBS_TEST_ORDERS, MBBS_REFERRAL
 }
 
 class MainActivity : ComponentActivity() {
@@ -85,6 +88,7 @@ class MainActivity : ComponentActivity() {
                     var loggedInUserRole by remember { mutableStateOf("") }
                     var selectedSessionId by remember { mutableStateOf<String?>(null) }
                     var selectedPatientId by remember { mutableStateOf<String?>(null) }
+                    var selectedPatientName by remember { mutableStateOf("") }
                     var latestSession by remember { mutableStateOf<SessionSummary?>(null) }
                     var latestDoctorName by remember { mutableStateOf<String?>(null) }
                     var trackingDoctorName by remember { mutableStateOf("") }
@@ -307,6 +311,77 @@ class MainActivity : ComponentActivity() {
                             PatientDetailScreen(
                                 patientId = selectedPatientId ?: "",
                                 onBack = { currentScreen = AppScreen.PATIENT_ASSIGNMENTS },
+                                onNavigateToVitals = { id, name ->
+                                    selectedPatientId = id
+                                    selectedPatientName = name
+                                    currentScreen = AppScreen.MBBS_VITALS
+                                },
+                                onNavigateToDiagnosis = { id, name ->
+                                    selectedPatientId = id
+                                    selectedPatientName = name
+                                    currentScreen = AppScreen.MBBS_DIAGNOSIS
+                                },
+                                onNavigateToPrescription = { id, name ->
+                                    selectedPatientId = id
+                                    selectedPatientName = name
+                                    currentScreen = AppScreen.MBBS_PRESCRIPTION
+                                },
+                                onNavigateToTestOrders = { id, name ->
+                                    selectedPatientId = id
+                                    selectedPatientName = name
+                                    currentScreen = AppScreen.MBBS_TEST_ORDERS
+                                },
+                                onNavigateToReferral = { id, name ->
+                                    selectedPatientId = id
+                                    selectedPatientName = name
+                                    currentScreen = AppScreen.MBBS_REFERRAL
+                                },
+                            )
+                        }
+
+                        AppScreen.MBBS_VITALS -> {
+                            MbbsVitalsScreen(
+                                patientId = selectedPatientId ?: "",
+                                patientName = selectedPatientName,
+                                onBack = {
+                                    selectedPatientId = selectedPatientId
+                                    currentScreen = AppScreen.PATIENT_DETAIL
+                                },
+                            )
+                        }
+
+                        AppScreen.MBBS_DIAGNOSIS -> {
+                            MbbsDiagnosisScreen(
+                                patientId = selectedPatientId ?: "",
+                                patientName = selectedPatientName,
+                                onBack = {
+                                    selectedPatientId = selectedPatientId
+                                    currentScreen = AppScreen.PATIENT_DETAIL
+                                },
+                            )
+                        }
+
+                        AppScreen.MBBS_PRESCRIPTION -> {
+                            MbbsPrescriptionScreen(
+                                patientId = selectedPatientId ?: "",
+                                patientName = selectedPatientName,
+                                onBack = { currentScreen = AppScreen.PATIENT_DETAIL },
+                            )
+                        }
+
+                        AppScreen.MBBS_TEST_ORDERS -> {
+                            MbbsTestOrdersScreen(
+                                patientId = selectedPatientId ?: "",
+                                patientName = selectedPatientName,
+                                onBack = { currentScreen = AppScreen.PATIENT_DETAIL },
+                            )
+                        }
+
+                        AppScreen.MBBS_REFERRAL -> {
+                            MbbsReferralScreen(
+                                patientId = selectedPatientId ?: "",
+                                patientName = selectedPatientName,
+                                onBack = { currentScreen = AppScreen.PATIENT_DETAIL },
                             )
                         }
 
