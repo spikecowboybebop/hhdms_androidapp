@@ -273,7 +273,7 @@ fun DoctorTrackingScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = if (isArrived) "$doctorName has arrived"
-                                else "Dr. $doctorName is on the way",
+                                else "$doctorName is on the way",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = TitleBlack,
