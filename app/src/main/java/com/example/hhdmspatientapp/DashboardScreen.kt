@@ -49,10 +49,23 @@ enum class CallStatus {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DashboardScreen(userEmail: String, latestSession: SessionSummary? = null, onLogout: () -> Unit, onNavigateToNotifications: () -> Unit, onNavigateToAppointments: () -> Unit, onNavigateToBookingDetail: (String) -> Unit = {}, onCallEndedRefresh: () -> Unit = {}) {
+fun DashboardScreen(userEmail: String, latestSession: SessionSummary? = null, doctorName: String? = null, onLogout: () -> Unit, onNavigateToNotifications: () -> Unit, onNavigateToAppointments: () -> Unit, onNavigateToBookingDetail: (String) -> Unit = {}, onCallEndedRefresh: () -> Unit = {}) {
     val context = LocalContext.current
     var currentCallStatus by remember { mutableStateOf(CallStatus.IDLE) }
-    val visitDoctorName = remember { mutableStateOf(VisitStorage.getVisitDoctorName()) }
+    val visitDoctorName = remember { mutableStateOf(doctorName ?: VisitStorage.getVisitDoctorName()) }
+
+    LaunchedEffect(doctorName) {
+        if (doctorName != null) {
+            visitDoctorName.value = doctorName
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        VisitStorage.onVisitInfoChanged = { name -> visitDoctorName.value = name }
+    }
+    DisposableEffect(Unit) {
+        onDispose { VisitStorage.onVisitInfoChanged = null }
+    }
 
     var hasAudioPermission by remember {
         mutableStateOf(

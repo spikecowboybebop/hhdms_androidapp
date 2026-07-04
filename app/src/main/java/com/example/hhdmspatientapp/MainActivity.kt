@@ -81,6 +81,7 @@ class MainActivity : ComponentActivity() {
                     var selectedSessionId by remember { mutableStateOf<String?>(null) }
                     var selectedPatientId by remember { mutableStateOf<String?>(null) }
                     var latestSession by remember { mutableStateOf<SessionSummary?>(null) }
+                    var latestDoctorName by remember { mutableStateOf<String?>(null) }
                     var sessionLoadKey by remember { mutableStateOf(0) }
                     var homeScreen by remember { mutableStateOf(AppScreen.DASHBOARD) }
                     var bookingOrigin by remember { mutableStateOf(AppScreen.DASHBOARD) }
@@ -92,6 +93,27 @@ class MainActivity : ComponentActivity() {
                             try {
                                 val sessions = RetrofitClient.apiService.getMySessions()
                                 latestSession = sessions.firstOrNull()
+                            } catch (_: Exception) { }
+                            try {
+                                val pending = RetrofitClient.apiService.getPendingNotifications()
+                                for (n in pending) {
+                                    NotificationStorage.addNotification(
+                                        NotificationItem(
+                                            id = NotificationStorage.nextId(),
+                                            title = n.title,
+                                            body = n.body,
+                                            timestamp = System.currentTimeMillis(),
+                                            sessionId = n.session_id,
+                                        )
+                                    )
+                                    if (n.type == "doctor_coming") {
+                                        val doctorName = n.body.substringBefore(" is coming to visit you")
+                                        VisitStorage.saveVisitInfo(doctorName)
+                                        if (latestDoctorName == null) {
+                                            latestDoctorName = doctorName
+                                        }
+                                    }
+                                }
                             } catch (_: Exception) { }
                         }
                     }
@@ -122,28 +144,6 @@ class MainActivity : ComponentActivity() {
                                 loggedInUserEmail = verifiedEmail
                                 loggedInUserRole = role
 
-                                // Fetch pending server notifications for offline users
-                                CoroutineScope(Dispatchers.IO).launch {
-                                    try {
-                                        val pending = RetrofitClient.apiService.getPendingNotifications()
-                                        for (n in pending) {
-                                            NotificationStorage.addNotification(
-                                                NotificationItem(
-                                                    id = NotificationStorage.nextId(),
-                                                    title = n.title,
-                                                    body = n.body,
-                                                    timestamp = System.currentTimeMillis(),
-                                                    sessionId = n.session_id,
-                                                )
-                                            )
-                                            if (n.type == "doctor_coming") {
-                                                val doctorName = n.body.substringBefore(" is coming to visit you")
-                                                VisitStorage.saveVisitInfo(doctorName)
-                                            }
-                                        }
-                                    } catch (_: Exception) { }
-                                }
-
                                 val pendingId = pendingSessionId
                                 pendingSessionId = null
                                 if (!pendingId.isNullOrBlank()) {
@@ -169,6 +169,7 @@ class MainActivity : ComponentActivity() {
                             DashboardScreen(
                                 userEmail = loggedInUserEmail,
                                 latestSession = latestSession,
+                                doctorName = latestDoctorName,
                                 onLogout = {
                                     TokenManager.clearToken()
                                     NotificationStorage.setCurrentUser(null)

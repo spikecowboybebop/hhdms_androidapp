@@ -10,12 +10,15 @@ object VisitStorage {
 
     private lateinit var prefs: SharedPreferences
 
+    var onVisitInfoChanged: ((String?) -> Unit)? = null
+
     fun init(context: Context) {
         prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
 
     fun saveVisitInfo(doctorName: String) {
         prefs.edit().putString(KEY_DOCTOR_NAME, doctorName).apply()
+        onVisitInfoChanged?.invoke(doctorName)
     }
 
     fun getVisitDoctorName(): String? {
@@ -24,6 +27,7 @@ object VisitStorage {
 
     fun clearVisit() {
         prefs.edit().remove(KEY_DOCTOR_NAME).apply()
+        onVisitInfoChanged?.invoke(null)
     }
 
     fun saveVisitingPatientId(patientId: String) {
