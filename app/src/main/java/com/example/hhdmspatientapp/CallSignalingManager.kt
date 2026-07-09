@@ -11,7 +11,7 @@ import java.net.URISyntaxException
 
 object CallSignalingManager {
     private const val TAG = "CallSignalingManager"
-    private const val SERVER_URL = "http://192.168.0.101:3001"
+    private const val SERVER_URL = "http://10.75.3.8:3001"
 
     private var mSocket: Socket? = null
     private var peerConnectionFactory: PeerConnectionFactory? = null

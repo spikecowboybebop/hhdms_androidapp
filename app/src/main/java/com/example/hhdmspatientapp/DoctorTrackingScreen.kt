@@ -102,6 +102,7 @@ private fun resampleRoute(route: List<GeoPoint>, targetCount: Int): List<GeoPoin
 @Composable
 fun DoctorTrackingScreen(
     doctorName: String,
+    patientId: String = "",
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -152,6 +153,20 @@ fun DoctorTrackingScreen(
         while (etaSeconds > 0 && !isArrived) {
             delay(1000L)
             if (etaSeconds > 0) etaSeconds--
+        }
+    }
+
+    LaunchedEffect(isArrived) {
+        if (isArrived && patientId.isNotBlank()) {
+            withContext(Dispatchers.IO) {
+                try {
+                    RetrofitClient.apiService.markArrived(patientId)
+                    Log.d("DoctorTracking", "markArrived called for patient $patientId")
+                } catch (e: Exception) {
+                    Log.e("DoctorTracking", "Failed to mark arrived: ${e.message}")
+                }
+            }
+            VisitStorage.clearVisitingPatientId()
         }
     }
 

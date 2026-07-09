@@ -169,6 +169,7 @@ data class PendingNotification(
     val body: String,
     val session_id: String? = null,
     val type: String? = null,
+    val patient_id: String? = null,
     val created_at: String? = null,
 )
 
@@ -218,6 +219,9 @@ interface AuthApiService {
     @POST("mbbs/patients/{id}/start-visit")
     suspend fun startPatientVisit(@Path("id") patientId: String): Map<String, Any?>
 
+    @POST("mbbs/patients/{id}/mark-arrived")
+    suspend fun markArrived(@Path("id") patientId: String): Map<String, Any?>
+
     @GET("mbbs/patients/{id}/vitals")
     suspend fun getMbbsPatientVitals(@Path("id") patientId: String): List<VitalSignsRecord>
 
@@ -226,6 +230,10 @@ interface AuthApiService {
 
     @GET("mbbs/patients/{id}/prescriptions")
     suspend fun getMbbsPatientPrescriptions(@Path("id") patientId: String): List<PrescriptionRecord>
+
+    // Consent
+    @POST("mbbs/patients/{id}/respond-consent")
+    suspend fun respondConsent(@Path("id") patientId: String, @Body request: Map<String, String>): Map<String, Any?>
 }
 
 // =============================================================================
@@ -233,7 +241,7 @@ interface AuthApiService {
 // =============================================================================
 object RetrofitClient {
     // 10.0.2.2 automatically bridges out to your host development computer's localhost:3000
-    private const val BASE_URL = "http://192.168.0.101:3001/"
+    private const val BASE_URL = "http://10.75.3.8:3001/"
 
     private val okHttpClient = okhttp3.OkHttpClient.Builder()
         .addInterceptor { chain ->

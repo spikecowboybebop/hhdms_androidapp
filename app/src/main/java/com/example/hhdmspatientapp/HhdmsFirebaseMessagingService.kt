@@ -46,19 +46,36 @@ class HhdmsFirebaseMessagingService : FirebaseMessagingService() {
             ),
         )
 
-        showNotification(title, body, data["session_id"])
+        val isConsentRequest = data["type"] == "consent_request"
+        showNotification(title, body, data["session_id"], if (isConsentRequest) data["patient_id"] else null)
 
         if (data["type"] == "doctor_coming") {
             val doctorName = body.substringBefore(" is coming to visit you")
             VisitStorage.saveVisitInfo(doctorName)
-            Log.d(TAG, "Doctor visit saved: $doctorName")
+            data["patient_id"]?.let { pid ->
+                VisitStorage.saveVisitingPatientId(pid)
+            }
+            Log.d(TAG, "Doctor visit saved: $doctorName (patient_id=${data["patient_id"]})")
+        }
+
+        if (data["type"] == "consent_request") {
+            val patientId = data["patient_id"]
+            if (patientId != null) {
+                // Open MainActivity with consent_patient_id to trigger the dialog
+                val intent = Intent(this, MainActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    putExtra("consent_patient_id", patientId)
+                }
+                startActivity(intent)
+            }
         }
     }
 
-    private fun showNotification(title: String, body: String, sessionId: String?) {
+    private fun showNotification(title: String, body: String, sessionId: String?, consentPatientId: String? = null) {
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
             sessionId?.let { putExtra("session_id", it) }
+            consentPatientId?.let { putExtra("consent_patient_id", it) }
         }
 
         val pendingIntent = PendingIntent.getActivity(
