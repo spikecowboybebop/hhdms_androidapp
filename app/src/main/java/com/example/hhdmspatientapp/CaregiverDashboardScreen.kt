@@ -353,7 +353,7 @@ fun CaregiverDashboardScreen(
                                 scope.launch {
                                     sendingAlert = reportId
                                     try {
-                                        RetrofitClient.apiService.sendCaregiverAlert(reportId, target)
+                                        RetrofitClient.apiService.sendCaregiverAlert(reportId, mapOf("target" to target))
                                         snackbarText = "Alert sent to $target"
                                         loadConditionReports(selectedPatient?.id)
                                     } catch (e: Exception) {

@@ -172,7 +172,7 @@ fun PatientDetailScreen(
                         }
                     }
 
-                    if (!p.has_emergency_flag) {
+                    if (p.has_emergency_flag != true) {
                         Spacer(modifier = Modifier.height(4.dp))
 
                         var isVisiting by remember { mutableStateOf(VisitStorage.getVisitingPatientId() == patientId) }
