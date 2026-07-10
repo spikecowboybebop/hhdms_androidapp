@@ -578,7 +578,7 @@ interface AuthApiService {
     suspend fun getSelfPatientInfo(): PatientInfoResponse
 
     @PATCH("patients/self")
-    suspend fun submitPatientInfo(@Body request: PatientInfoRequest): PatientInfoResponse
+    suspend fun submitPatientInfo(@Body request: PatientInfoRequest)
 
     // ── Patient Document Endpoints ──
     @GET("patients/self/documents")
