@@ -15,6 +15,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
@@ -44,6 +49,7 @@ class MainActivity : ComponentActivity() {
     ) { }
 
     private var pendingSessionId by mutableStateOf<String?>(null)
+    private var pendingConsentPatientId by mutableStateOf<String?>(null)
     private var notificationIntentCount by mutableStateOf(0)
 
     override fun onNewIntent(intent: android.content.Intent) {
@@ -51,6 +57,7 @@ class MainActivity : ComponentActivity() {
         setIntent(intent)
         notificationIntentCount++
         pendingSessionId = intent.getStringExtra("session_id")
+        pendingConsentPatientId = intent.getStringExtra("consent_patient_id")
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -58,6 +65,7 @@ class MainActivity : ComponentActivity() {
 
         // Read session_id from launch intent (cold start from notification tap)
         pendingSessionId = intent.getStringExtra("session_id")
+        pendingConsentPatientId = intent.getStringExtra("consent_patient_id")
 
         TokenManager.init(applicationContext)
         NotificationStorage.init(applicationContext)
@@ -93,14 +101,26 @@ class MainActivity : ComponentActivity() {
                     var latestSession by remember { mutableStateOf<SessionSummary?>(null) }
                     var latestDoctorName by remember { mutableStateOf<String?>(null) }
                     var trackingDoctorName by remember { mutableStateOf("") }
+                    var trackingPatientId by remember { mutableStateOf<String?>(null) }
+                    var consentRequestPatientId by remember { mutableStateOf<String?>(null) }
                     var sessionLoadKey by remember { mutableStateOf(0) }
                     var homeScreen by remember { mutableStateOf(AppScreen.DASHBOARD) }
                     var bookingOrigin by remember { mutableStateOf(AppScreen.DASHBOARD) }
 
                     notificationIntentCount // read to trigger recomposition on new intent
 
+                    // Transfer pendingConsentPatientId to state (handles both cold
+                    // start from onCreate and warm start from onNewIntent).
+                    if (pendingConsentPatientId != null && consentRequestPatientId == null) {
+                        consentRequestPatientId = pendingConsentPatientId
+                        pendingConsentPatientId = null
+                    }
+
                     LaunchedEffect(sessionLoadKey) {
                         if (sessionLoadKey > 0 && TokenManager.getToken() != null) {
+                            // Ensure FCM token is registered every time polling starts
+                            HhdmsFirebaseMessagingService.registerCurrentToken()
+
                             try {
                                 val sessions = RetrofitClient.apiService.getMySessions()
                                 latestSession = sessions.firstOrNull()
@@ -129,8 +149,21 @@ class MainActivity : ComponentActivity() {
                                     if (n.type == "doctor_coming") {
                                         val doctorName = n.body.substringBefore(" is coming to visit you")
                                         VisitStorage.saveVisitInfo(doctorName)
+                                        n.patient_id?.let { VisitStorage.saveVisitingPatientId(it) }
                                         latestDoctorName = doctorName
                                         foundDoctorComing = true
+                                    }
+                                    if (n.type == "provider_assigned") {
+                                        Toast.makeText(
+                                            this@MainActivity,
+                                            n.body,
+                                            Toast.LENGTH_LONG,
+                                        ).show()
+                                    }
+                                    if (n.type == "consent_request") {
+                                        n.patient_id?.let { pid ->
+                                            consentRequestPatientId = pid
+                                        }
                                     }
                                 }
 
@@ -155,7 +188,20 @@ class MainActivity : ComponentActivity() {
                                         if (n.type == "doctor_coming") {
                                             val doctorName = n.body.substringBefore(" is coming to visit you")
                                             VisitStorage.saveVisitInfo(doctorName)
+                                            n.patient_id?.let { VisitStorage.saveVisitingPatientId(it) }
                                             latestDoctorName = doctorName
+                                        }
+                                        if (n.type == "provider_assigned") {
+                                            Toast.makeText(
+                                                this@MainActivity,
+                                                n.body,
+                                                Toast.LENGTH_LONG,
+                                            ).show()
+                                        }
+                                        if (n.type == "consent_request") {
+                                            n.patient_id?.let { pid ->
+                                                consentRequestPatientId = pid
+                                            }
                                         }
                                     }
                                 } catch (_: Exception) { }
@@ -167,6 +213,53 @@ class MainActivity : ComponentActivity() {
                         if (currentScreen == AppScreen.DASHBOARD || currentScreen == AppScreen.MBBS_DOCTOR_DASHBOARD || currentScreen == AppScreen.CAREGIVER_DASHBOARD) {
                             sessionLoadKey++
                         }
+                    }
+
+                    // Consent dialog — shows when consent_patient_id is received from FCM
+                    if (consentRequestPatientId != null || pendingConsentPatientId != null) {
+                        val patientId = consentRequestPatientId ?: pendingConsentPatientId ?: ""
+                        AlertDialog(
+                            onDismissRequest = {
+                                consentRequestPatientId = null
+                                pendingConsentPatientId = null
+                            },
+                            containerColor = PureWhite,
+                            title = { Text("Patient Consent Required", color = TitleBlack) },
+                            text = { Text("The doctor is requesting your consent to begin the consultation. Do you grant consent?", color = CoolGray) },
+                            confirmButton = {
+                                Button(
+                                    onClick = {
+                                        CoroutineScope(Dispatchers.IO).launch {
+                                            try {
+                                                RetrofitClient.apiService.respondConsent(
+                                                    patientId,
+                                                    mapOf("answer" to "granted"),
+                                                )
+                                            } catch (_: Exception) { }
+                                        }
+                                        consentRequestPatientId = null
+                                        pendingConsentPatientId = null
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = TechTeal),
+                                ) { Text("Grant Consent", color = PureWhite) }
+                            },
+                            dismissButton = {
+                                TextButton(
+                                    onClick = {
+                                        CoroutineScope(Dispatchers.IO).launch {
+                                            try {
+                                                RetrofitClient.apiService.respondConsent(
+                                                    patientId,
+                                                    mapOf("answer" to "denied"),
+                                                )
+                                            } catch (_: Exception) { }
+                                        }
+                                        consentRequestPatientId = null
+                                        pendingConsentPatientId = null
+                                    },
+                                ) { Text("Deny", color = TechTeal) }
+                            },
+                        )
                     }
 
                     if (!pendingSessionId.isNullOrBlank() &&
@@ -204,6 +297,7 @@ class MainActivity : ComponentActivity() {
                                         AppScreen.MBBS_BOOKING_DETAIL
                                     else
                                         AppScreen.BOOKING_DETAIL
+                                    sessionLoadKey++
                                 } else if (role == "MBBS_DOCTOR") {
                                     homeScreen = AppScreen.MBBS_DOCTOR_DASHBOARD
                                     currentScreen = AppScreen.MBBS_DOCTOR_DASHBOARD
@@ -214,7 +308,6 @@ class MainActivity : ComponentActivity() {
                                     homeScreen = AppScreen.DASHBOARD
                                     currentScreen = AppScreen.DASHBOARD
                                 }
-                                sessionLoadKey++
                             })
                         }
 
@@ -241,6 +334,7 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onNavigateToDoctorTracking = {
                                     trackingDoctorName = latestDoctorName ?: ""
+                                    trackingPatientId = VisitStorage.getVisitingPatientId()
                                     currentScreen = AppScreen.DOCTOR_TRACKING
                                 },
                                 onCallEndedRefresh = { sessionLoadKey++ },
@@ -406,6 +500,7 @@ class MainActivity : ComponentActivity() {
                         AppScreen.DOCTOR_TRACKING -> {
                             DoctorTrackingScreen(
                                 doctorName = trackingDoctorName,
+                                patientId = trackingPatientId ?: "",
                                 onBack = { currentScreen = homeScreen },
                             )
                         }
