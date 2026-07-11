@@ -12,6 +12,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
@@ -165,6 +166,12 @@ class MainActivity : ComponentActivity() {
                                         latestDoctorName = doctorName
                                         foundDoctorComing = true
                                     }
+                                    if (n.type == "appointment_done") {
+                                        VisitStorage.clearVisit()
+                                        VisitStorage.clearVisitingPatientId()
+                                        VisitStorage.saveAppointmentDone()
+                                        latestDoctorName = null
+                                    }
                                     if (n.type == "provider_assigned") {
                                         Toast.makeText(
                                             this@MainActivity,
@@ -215,6 +222,12 @@ class MainActivity : ComponentActivity() {
                                             VisitStorage.saveVisitInfo(doctorName)
                                             n.patient_id?.let { VisitStorage.saveVisitingPatientId(it) }
                                             latestDoctorName = doctorName
+                                        }
+                                        if (n.type == "appointment_done") {
+                                            VisitStorage.clearVisit()
+                                            VisitStorage.clearVisitingPatientId()
+                                            VisitStorage.saveAppointmentDone()
+                                            latestDoctorName = null
                                         }
                                         if (n.type == "provider_assigned") {
                                             Toast.makeText(
@@ -326,6 +339,35 @@ class MainActivity : ComponentActivity() {
                             AppScreen.MBBS_BOOKING_DETAIL
                         else
                             AppScreen.BOOKING_DETAIL
+                    }
+
+                    BackHandler(enabled = true) {
+                        when (currentScreen) {
+                            AppScreen.AUTH,
+                            AppScreen.DASHBOARD,
+                            AppScreen.MBBS_DOCTOR_DASHBOARD,
+                            AppScreen.CAREGIVER_DASHBOARD -> {
+                                finishAffinity()
+                            }
+                            AppScreen.CAREGIVER_PATIENT_LIST -> currentScreen = AppScreen.CAREGIVER_DASHBOARD
+                            AppScreen.CAREGIVER_CHECK_IN_OUT -> currentScreen = AppScreen.CAREGIVER_DASHBOARD
+                            AppScreen.CAREGIVER_ACTIVITY_LOG -> currentScreen = AppScreen.CAREGIVER_DASHBOARD
+                            AppScreen.CAREGIVER_CONDITION_REPORT -> currentScreen = AppScreen.CAREGIVER_DASHBOARD
+                            AppScreen.CAREGIVER_PATIENT_DETAIL -> currentScreen = AppScreen.CAREGIVER_PATIENT_LIST
+                            AppScreen.PATIENT_ASSIGNMENTS -> currentScreen = AppScreen.MBBS_DOCTOR_DASHBOARD
+                            AppScreen.PATIENT_DETAIL -> currentScreen = AppScreen.PATIENT_ASSIGNMENTS
+                            AppScreen.MBBS_VITALS,
+                            AppScreen.MBBS_DIAGNOSIS,
+                            AppScreen.MBBS_PRESCRIPTION,
+                            AppScreen.MBBS_TEST_ORDERS,
+                            AppScreen.MBBS_REFERRAL -> currentScreen = AppScreen.PATIENT_DETAIL
+                            AppScreen.DOCTOR_TRACKING -> currentScreen = homeScreen
+                            AppScreen.APPOINTMENTS -> currentScreen = homeScreen
+                            AppScreen.NOTIFICATIONS -> currentScreen = homeScreen
+                            AppScreen.BOOKING_DETAIL -> currentScreen = bookingOrigin
+                            AppScreen.MBBS_BOOKING_DETAIL -> currentScreen = bookingOrigin
+                            else -> finishAffinity()
+                        }
                     }
 
                     when (currentScreen) {

@@ -21,8 +21,10 @@ import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.CallEnd
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.LocalPharmacy
+import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.MedicalServices
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Notifications
@@ -44,6 +46,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.example.hhdmspatientapp.ui.theme.*
+import com.stripe.android.PaymentConfiguration
+import com.stripe.android.paymentsheet.PaymentSheet
+import com.stripe.android.paymentsheet.PaymentSheetResult
+import com.stripe.android.paymentsheet.rememberPaymentSheet
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -58,8 +64,68 @@ enum class CallStatus {
 @Composable
 fun DashboardScreen(userEmail: String, latestSession: SessionSummary? = null, doctorName: String? = null, onLogout: () -> Unit, onNavigateToNotifications: () -> Unit, onNavigateToAppointments: () -> Unit, onNavigateToBookingDetail: (String) -> Unit = {}, onNavigateToDoctorTracking: () -> Unit = {}, onCallEndedRefresh: () -> Unit = {}) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var currentCallStatus by remember { mutableStateOf(CallStatus.IDLE) }
     val visitDoctorName = remember { mutableStateOf(doctorName ?: VisitStorage.getVisitDoctorName()) }
+    val appointmentDone = remember { mutableStateOf(VisitStorage.isAppointmentDone()) }
+    var paymentLoading by remember { mutableStateOf(false) }
+    var paymentError by remember { mutableStateOf<String?>(null) }
+    var isPaid by remember { mutableStateOf(false) }
+    var currentPaymentId by remember { mutableStateOf<String?>(null) }
+
+    val onPaymentSuccess: () -> Unit = {
+        scope.launch {
+            try {
+                val paymentId = currentPaymentId
+                if (paymentId != null) {
+                    RetrofitClient.apiService.confirmPayment(
+                        ConfirmPaymentRequest(payment_id = paymentId)
+                    )
+                }
+                isPaid = true
+                currentPaymentId = null
+                VisitStorage.clearAppointmentDone()
+                appointmentDone.value = false
+                paymentLoading = false
+            } catch (e: Exception) {
+                paymentError = "Failed to confirm payment: ${e.message}"
+                paymentLoading = false
+            }
+        }
+    }
+
+    val paymentSheet = rememberPaymentSheet { result ->
+        when (result) {
+            is PaymentSheetResult.Completed -> {
+                scope.launch {
+                    delay(2000)
+                    onPaymentSuccess()
+                }
+            }
+            is PaymentSheetResult.Canceled -> {
+                paymentLoading = false
+                paymentError = null
+            }
+            is PaymentSheetResult.Failed -> {
+                paymentError = "Payment failed: ${result.error.message}"
+                paymentLoading = false
+            }
+        }
+    }
+
+    // Check payment status on load
+    LaunchedEffect(appointmentDone.value, latestSession?.id) {
+        if (appointmentDone.value && latestSession?.id != null) {
+            try {
+                val status = RetrofitClient.apiService.getPaymentStatus(latestSession.id)
+                isPaid = status.paid
+                if (isPaid) {
+                    VisitStorage.clearAppointmentDone()
+                    appointmentDone.value = false
+                }
+            } catch (_: Exception) { }
+        }
+    }
 
     LaunchedEffect(doctorName) {
         if (doctorName != null) {
@@ -68,7 +134,10 @@ fun DashboardScreen(userEmail: String, latestSession: SessionSummary? = null, do
     }
 
     LaunchedEffect(Unit) {
-        VisitStorage.onVisitInfoChanged = { name -> visitDoctorName.value = name }
+        VisitStorage.onVisitInfoChanged = { name ->
+            visitDoctorName.value = name
+            appointmentDone.value = VisitStorage.isAppointmentDone()
+        }
     }
     DisposableEffect(Unit) {
         onDispose { VisitStorage.onVisitInfoChanged = null }
@@ -264,6 +333,96 @@ fun DashboardScreen(userEmail: String, latestSession: SessionSummary? = null, do
                             tint = TechTeal,
                             modifier = Modifier.size(24.dp),
                         )
+                    }
+                }
+                Spacer(modifier = Modifier.height(20.dp))
+            }
+
+            // ── Appointment Done Banner ──
+            if (appointmentDone.value && !isPaid) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(14.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = Color(0xFF2E7D32),
+                                modifier = Modifier.size(24.dp),
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Appointment Done",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF2E7D32),
+                                )
+                                Text(
+                                    text = "Your appointment is completed. Please complete your payment.",
+                                    fontSize = 13.sp,
+                                    color = TitleBlack,
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        paymentError?.let { error ->
+                            Text(
+                                text = error,
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(bottom = 8.dp),
+                            )
+                        }
+                        Button(
+                            onClick = {
+                                if (latestSession == null) return@Button
+                                paymentLoading = true
+                                paymentError = null
+                                scope.launch {
+                                    try {
+                                        val response = RetrofitClient.apiService.createPaymentIntent(
+                                            CreatePaymentRequest(booking_session_id = latestSession.id)
+                                        )
+                                        currentPaymentId = response.paymentId
+                                        PaymentConfiguration.init(context, response.publishableKey)
+                                        val config = PaymentSheet.Configuration(
+                                            merchantDisplayName = "HHDMSPatient",
+                                        )
+                                        paymentSheet.presentWithPaymentIntent(
+                                            response.clientSecret,
+                                            config,
+                                        )
+                                    } catch (e: Exception) {
+                                        paymentError = "Failed to start payment: ${e.message}"
+                                        paymentLoading = false
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth().height(44.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = TechTeal),
+                            enabled = !paymentLoading && !isPaid,
+                        ) {
+                            if (paymentLoading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    color = PureWhite,
+                                    strokeWidth = 2.dp,
+                                )
+                            } else {
+                                Icon(Icons.Default.Payment, contentDescription = null, modifier = Modifier.size(18.dp))
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                if (isPaid) "Paid" else "Pay Now",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
                     }
                 }
                 Spacer(modifier = Modifier.height(20.dp))

@@ -257,6 +257,27 @@ data class PatientReport(
     val generated_at: String? = null,
 )
 
+data class CreatePaymentRequest(
+    val booking_session_id: String,
+)
+
+data class PaymentIntentResponse(
+    val paymentId: String,
+    val clientSecret: String,
+    val publishableKey: String,
+    val amount: Double,
+    val serviceType: String,
+)
+
+data class ConfirmPaymentRequest(
+    val payment_id: String,
+)
+
+data class PaymentStatusResponse(
+    val paid: Boolean,
+    val paymentId: String? = null,
+)
+
 data class PendingNotification(
     val id: String,
     val title: String,
@@ -691,6 +712,16 @@ interface AuthApiService {
         @Path("id") id: String,
         @Body request: Map<String, String>,
     ): TeleconsultSessionResponse
+    // ── Payment Endpoints ──
+    @POST("payments/create-intent")
+    suspend fun createPaymentIntent(@Body request: CreatePaymentRequest): PaymentIntentResponse
+
+    @POST("payments/confirm")
+    suspend fun confirmPayment(@Body request: ConfirmPaymentRequest)
+
+    @GET("payments/status/{sessionId}")
+    suspend fun getPaymentStatus(@Path("sessionId") sessionId: String): PaymentStatusResponse
+
 }
 
 // =============================================================================
@@ -698,7 +729,7 @@ interface AuthApiService {
 // =============================================================================
 object RetrofitClient {
     // 10.0.2.2 automatically bridges out to your host development computer's localhost:3000
-    private const val BASE_URL = "http://192.168.0.105:3001"
+    private const val BASE_URL = "http://192.168.1.40:3001"
 
     private val okHttpClient = okhttp3.OkHttpClient.Builder()
         .addInterceptor { chain ->
