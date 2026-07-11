@@ -65,4 +65,5 @@ dependencies {
     implementation("com.google.firebase:firebase-messaging-ktx:24.1.1")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.osmdroid:osmdroid-android:6.1.18")
+    implementation("com.stripe:stripe-android:20.48.1")
 }

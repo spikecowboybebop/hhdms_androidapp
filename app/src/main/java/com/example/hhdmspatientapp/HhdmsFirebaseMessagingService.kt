@@ -58,6 +58,13 @@ class HhdmsFirebaseMessagingService : FirebaseMessagingService() {
             Log.d(TAG, "Doctor visit saved: $doctorName (patient_id=${data["patient_id"]})")
         }
 
+        if (data["type"] == "appointment_done") {
+            VisitStorage.clearVisit()
+            VisitStorage.clearVisitingPatientId()
+            VisitStorage.saveAppointmentDone()
+            Log.d(TAG, "Appointment done, visit cleared")
+        }
+
         if (data["type"] == "consent_request") {
             val patientId = data["patient_id"]
             if (patientId != null) {

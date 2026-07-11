@@ -7,6 +7,7 @@ object VisitStorage {
     private const val PREFS_NAME = "visit_prefs"
     private const val KEY_DOCTOR_NAME = "visiting_doctor_name"
     private const val KEY_PATIENT_ID = "visiting_patient_id"
+    private const val KEY_APPOINTMENT_DONE = "appointment_done"
 
     private lateinit var prefs: SharedPreferences
 
@@ -18,6 +19,7 @@ object VisitStorage {
 
     fun saveVisitInfo(doctorName: String) {
         prefs.edit().putString(KEY_DOCTOR_NAME, doctorName).apply()
+        clearAppointmentDone()
         onVisitInfoChanged?.invoke(doctorName)
     }
 
@@ -40,5 +42,17 @@ object VisitStorage {
 
     fun clearVisitingPatientId() {
         prefs.edit().remove(KEY_PATIENT_ID).apply()
+    }
+
+    fun saveAppointmentDone() {
+        prefs.edit().putBoolean(KEY_APPOINTMENT_DONE, true).apply()
+    }
+
+    fun isAppointmentDone(): Boolean {
+        return prefs.getBoolean(KEY_APPOINTMENT_DONE, false)
+    }
+
+    fun clearAppointmentDone() {
+        prefs.edit().remove(KEY_APPOINTMENT_DONE).apply()
     }
 }
