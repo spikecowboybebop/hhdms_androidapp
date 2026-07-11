@@ -40,7 +40,8 @@ enum class AppScreen {
     MBBS_DOCTOR_DASHBOARD, MBBS_BOOKING_DETAIL, PATIENT_ASSIGNMENTS,
     PATIENT_DETAIL, DOCTOR_TRACKING,
     MBBS_VITALS, MBBS_DIAGNOSIS, MBBS_PRESCRIPTION, MBBS_TEST_ORDERS, MBBS_REFERRAL,
-    CAREGIVER_DASHBOARD
+    CAREGIVER_DASHBOARD, CAREGIVER_PATIENT_LIST, CAREGIVER_PATIENT_DETAIL,
+    CAREGIVER_ACTIVITY_LOG, CAREGIVER_CONDITION_REPORT, CAREGIVER_CHECK_IN_OUT,
 }
 
 class MainActivity : ComponentActivity() {
@@ -210,7 +211,7 @@ class MainActivity : ComponentActivity() {
                     }
 
                     LaunchedEffect(currentScreen) {
-                        if (currentScreen == AppScreen.DASHBOARD || currentScreen == AppScreen.MBBS_DOCTOR_DASHBOARD || currentScreen == AppScreen.CAREGIVER_DASHBOARD) {
+                        if (currentScreen == AppScreen.DASHBOARD || currentScreen == AppScreen.MBBS_DOCTOR_DASHBOARD || currentScreen == AppScreen.CAREGIVER_DASHBOARD || currentScreen == AppScreen.CAREGIVER_PATIENT_LIST || currentScreen == AppScreen.CAREGIVER_CHECK_IN_OUT) {
                             sessionLoadKey++
                         }
                     }
@@ -494,6 +495,67 @@ class MainActivity : ComponentActivity() {
                                     NotificationStorage.setCurrentUser(null)
                                     currentScreen = AppScreen.AUTH
                                 },
+                                onNavigateToNotifications = {
+                                    currentScreen = AppScreen.NOTIFICATIONS
+                                },
+                                onNavigateToPatientList = {
+                                    currentScreen = AppScreen.CAREGIVER_PATIENT_LIST
+                                },
+                                onNavigateToCheckInOut = {
+                                    currentScreen = AppScreen.CAREGIVER_CHECK_IN_OUT
+                                },
+                                onNavigateToActivityLog = {
+                                    currentScreen = AppScreen.CAREGIVER_ACTIVITY_LOG
+                                },
+                                onNavigateToConditionReports = {
+                                    currentScreen = AppScreen.CAREGIVER_CONDITION_REPORT
+                                },
+                            )
+                        }
+
+                        AppScreen.CAREGIVER_PATIENT_LIST -> {
+                            CaregiverPatientListScreen(
+                                onBack = { currentScreen = AppScreen.CAREGIVER_DASHBOARD },
+                                onPatientClick = { patientId, patientName ->
+                                    selectedPatientId = patientId
+                                    selectedPatientName = patientName
+                                    currentScreen = AppScreen.CAREGIVER_PATIENT_DETAIL
+                                },
+                            )
+                        }
+
+                        AppScreen.CAREGIVER_PATIENT_DETAIL -> {
+                            CaregiverPatientDetailScreen(
+                                patientId = selectedPatientId ?: "",
+                                onBack = { currentScreen = AppScreen.CAREGIVER_PATIENT_LIST },
+                                onNavigateToActivityLog = { id, name ->
+                                    selectedPatientId = id
+                                    selectedPatientName = name
+                                    currentScreen = AppScreen.CAREGIVER_ACTIVITY_LOG
+                                },
+                                onNavigateToConditionReport = { id, name ->
+                                    selectedPatientId = id
+                                    selectedPatientName = name
+                                    currentScreen = AppScreen.CAREGIVER_CONDITION_REPORT
+                                },
+                            )
+                        }
+
+                        AppScreen.CAREGIVER_ACTIVITY_LOG -> {
+                            CaregiverActivityLogScreen(
+                                onBack = { currentScreen = AppScreen.CAREGIVER_DASHBOARD },
+                            )
+                        }
+
+                        AppScreen.CAREGIVER_CONDITION_REPORT -> {
+                            CaregiverConditionReportScreen(
+                                onBack = { currentScreen = AppScreen.CAREGIVER_DASHBOARD },
+                            )
+                        }
+
+                        AppScreen.CAREGIVER_CHECK_IN_OUT -> {
+                            CaregiverCheckInOutScreen(
+                                onBack = { currentScreen = AppScreen.CAREGIVER_DASHBOARD },
                             )
                         }
 

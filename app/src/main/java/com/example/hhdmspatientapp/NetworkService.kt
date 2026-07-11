@@ -337,6 +337,56 @@ data class CreateConditionReportRequest(
     val severity: String = "MODERATE",
 )
 
+// ── CG-006: GPS Check-In/Out models ──
+data class CaregiverCheckInOut(
+    val id: String,
+    val patient_id: String,
+    val check_in_time: String? = null,
+    val check_out_time: String? = null,
+    val check_in_latitude: Double? = null,
+    val check_in_longitude: Double? = null,
+    val check_out_latitude: Double? = null,
+    val check_out_longitude: Double? = null,
+    val distance_meters: Double? = null,
+    val status: String = "CHECKED_IN",
+    val patient: CaregiverCheckInOutPatient? = null,
+)
+
+data class CaregiverCheckInOutPatient(
+    val first_name_en: String? = null,
+    val last_name_en: String? = null,
+    val address_line1: String? = null,
+    val district: String? = null,
+)
+
+data class CaregiverCheckInRequest(
+    val patient_id: String,
+    val latitude: Double,
+    val longitude: Double,
+)
+
+data class CaregiverCheckOutRequest(
+    val latitude: Double,
+    val longitude: Double,
+)
+
+// ── CG-008: Timesheet models ──
+data class CaregiverTimesheet(
+    val id: String,
+    val shift_date: String,
+    val check_in_time: String? = null,
+    val check_out_time: String? = null,
+    val total_hours: Double? = null,
+    val service_type: String? = null,
+    val status: String = "ACTIVE",
+    val patient: CaregiverTimesheetPatient? = null,
+)
+
+data class CaregiverTimesheetPatient(
+    val first_name_en: String? = null,
+    val last_name_en: String? = null,
+)
+
 // ICD-10
 data class Icd10Code(
     val code: String,
@@ -573,6 +623,23 @@ interface AuthApiService {
     @POST("caregiver/condition-reports/{id}/alert")
     suspend fun sendCaregiverAlert(@Path("id") reportId: String, @Body target: Map<String, String>): Map<String, Any?>
 
+    // ── CG-006: GPS Check-In/Out Endpoints ──
+    @POST("caregiver/check-in")
+    suspend fun caregiverCheckIn(@Body request: CaregiverCheckInRequest): Map<String, Any?>
+
+    @POST("caregiver/check-out/{id}")
+    suspend fun caregiverCheckOut(@Path("id") recordId: String, @Body request: CaregiverCheckOutRequest): Map<String, Any?>
+
+    @GET("caregiver/check-in-out")
+    suspend fun getCaregiverCheckInOuts(@retrofit2.http.Query("patient_id") patientId: String?): List<CaregiverCheckInOut>
+
+    @GET("caregiver/check-in-out/today")
+    suspend fun getTodayCheckInOut(): CaregiverCheckInOut?
+
+    // ── CG-008: Timesheet Endpoints ──
+    @GET("caregiver/timesheets")
+    suspend fun getCaregiverTimesheets(@retrofit2.http.Query("month") month: String?): List<CaregiverTimesheet>
+
     // ── Patient Self-Info Endpoints ──
     @GET("patients/self")
     suspend fun getSelfPatientInfo(): PatientInfoResponse
@@ -595,7 +662,7 @@ interface AuthApiService {
 // =============================================================================
 object RetrofitClient {
     // 10.0.2.2 automatically bridges out to your host development computer's localhost:3000
-    private const val BASE_URL = "http://192.168.1.40:3001/"
+    private const val BASE_URL = "http://192.168.0.105:3001"
 
     private val okHttpClient = okhttp3.OkHttpClient.Builder()
         .addInterceptor { chain ->
