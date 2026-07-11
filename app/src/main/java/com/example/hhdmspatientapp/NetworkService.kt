@@ -186,6 +186,18 @@ data class ReferralChainEvent(
     val created_at: String? = null,
 )
 
+data class TeleconsultSessionResponse(
+    val id: String? = null,
+    val referral_id: String? = null,
+    val patient_id: String? = null,
+    val specialist_id: String? = null,
+    val status: String? = null,
+    val room_name: String? = null,
+    val started_at: String? = null,
+    val ended_at: String? = null,
+    val created_at: String? = null,
+)
+
 data class PatientDocument(
     val id: String? = null,
     val patient_id: String? = null,
@@ -667,6 +679,18 @@ interface AuthApiService {
     @GET("patients/self/reports")
     suspend fun getSelfReports(): List<PatientReport>
 
+    // ── Teleconsult Endpoints ──
+    @POST("api/teleconsult/sessions")
+    suspend fun createTeleconsultSession(@Body request: Map<String, String>): TeleconsultSessionResponse
+
+    @GET("api/teleconsult/sessions/by-referral/{referralId}")
+    suspend fun getTeleconsultSessionByReferral(@Path("referralId") referralId: String): TeleconsultSessionResponse
+
+    @PATCH("api/teleconsult/sessions/{id}/status")
+    suspend fun updateTeleconsultSessionStatus(
+        @Path("id") id: String,
+        @Body request: Map<String, String>,
+    ): TeleconsultSessionResponse
 }
 
 // =============================================================================

@@ -42,6 +42,7 @@ enum class AppScreen {
     MBBS_VITALS, MBBS_DIAGNOSIS, MBBS_PRESCRIPTION, MBBS_TEST_ORDERS, MBBS_REFERRAL,
     CAREGIVER_DASHBOARD, CAREGIVER_PATIENT_LIST, CAREGIVER_PATIENT_DETAIL,
     CAREGIVER_ACTIVITY_LOG, CAREGIVER_CONDITION_REPORT, CAREGIVER_CHECK_IN_OUT,
+    TELECONSULT,
 }
 
 class MainActivity : ComponentActivity() {
@@ -51,7 +52,10 @@ class MainActivity : ComponentActivity() {
 
     private var pendingSessionId by mutableStateOf<String?>(null)
     private var pendingConsentPatientId by mutableStateOf<String?>(null)
+    private var pendingTeleconsultSessionId by mutableStateOf<String?>(null)
+    private var pendingTeleconsultSpecialist by mutableStateOf<String?>(null)
     private var notificationIntentCount by mutableStateOf(0)
+    private val processedTeleconsultIds = mutableSetOf<String>()
 
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
@@ -59,6 +63,8 @@ class MainActivity : ComponentActivity() {
         notificationIntentCount++
         pendingSessionId = intent.getStringExtra("session_id")
         pendingConsentPatientId = intent.getStringExtra("consent_patient_id")
+        pendingTeleconsultSessionId = intent.getStringExtra("teleconsult_session_id")
+        pendingTeleconsultSpecialist = intent.getStringExtra("teleconsult_specialist_name")
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -67,6 +73,8 @@ class MainActivity : ComponentActivity() {
         // Read session_id from launch intent (cold start from notification tap)
         pendingSessionId = intent.getStringExtra("session_id")
         pendingConsentPatientId = intent.getStringExtra("consent_patient_id")
+        pendingTeleconsultSessionId = intent.getStringExtra("teleconsult_session_id")
+        pendingTeleconsultSpecialist = intent.getStringExtra("teleconsult_specialist_name")
 
         TokenManager.init(applicationContext)
         NotificationStorage.init(applicationContext)
@@ -86,6 +94,7 @@ class MainActivity : ComponentActivity() {
         registerExistingFcmToken()
 
         CallSignalingManager.initialize(applicationContext)
+        TeleconsultSignalingManager.initialize(applicationContext)
 
         setContent {
             HHDMSPatientAppTheme {
@@ -107,6 +116,8 @@ class MainActivity : ComponentActivity() {
                     var sessionLoadKey by remember { mutableStateOf(0) }
                     var homeScreen by remember { mutableStateOf(AppScreen.DASHBOARD) }
                     var bookingOrigin by remember { mutableStateOf(AppScreen.DASHBOARD) }
+                    var selectedTeleconsultSessionId by remember { mutableStateOf<String?>(null) }
+                    var incomingCall by remember { mutableStateOf<IncomingCallInfo?>(null) }
 
                     notificationIntentCount // read to trigger recomposition on new intent
 
@@ -166,6 +177,19 @@ class MainActivity : ComponentActivity() {
                                             consentRequestPatientId = pid
                                         }
                                     }
+                                    if (n.type == "teleconsult_request") {
+                                        val sid = n.session_id
+                                        if (incomingCall == null && sid != null && !processedTeleconsultIds.contains(sid)) {
+                                            processedTeleconsultIds.add(sid)
+                                            val name = n.body
+                                                .removePrefix("Dr. ")
+                                                .substringBefore(" is calling")
+                                            incomingCall = IncomingCallInfo(
+                                                sessionId = sid,
+                                                specialistName = name,
+                                            )
+                                        }
+                                    }
                                 }
 
                             } catch (_: Exception) { }
@@ -202,6 +226,19 @@ class MainActivity : ComponentActivity() {
                                         if (n.type == "consent_request") {
                                             n.patient_id?.let { pid ->
                                                 consentRequestPatientId = pid
+                                            }
+                                        }
+                                        if (n.type == "teleconsult_request") {
+                                            val sid = n.session_id
+                                            if (incomingCall == null && sid != null && !processedTeleconsultIds.contains(sid)) {
+                                                processedTeleconsultIds.add(sid)
+                                                val name = n.body
+                                                    .removePrefix("Dr. ")
+                                                    .substringBefore(" is calling")
+                                                incomingCall = IncomingCallInfo(
+                                                    sessionId = sid,
+                                                    specialistName = name,
+                                                )
                                             }
                                         }
                                     }
@@ -261,6 +298,22 @@ class MainActivity : ComponentActivity() {
                                 ) { Text("Deny", color = TechTeal) }
                             },
                         )
+                    }
+
+                    // Teleconsult deep-link from FCM notification → show incoming call overlay
+                    if (!pendingTeleconsultSessionId.isNullOrBlank()
+                        && incomingCall == null
+                        && TokenManager.getToken() != null
+                        && !processedTeleconsultIds.contains(pendingTeleconsultSessionId)
+                    ) {
+                        val sid = pendingTeleconsultSessionId!!
+                        processedTeleconsultIds.add(sid)
+                        incomingCall = IncomingCallInfo(
+                            sessionId = sid,
+                            specialistName = pendingTeleconsultSpecialist ?: "Specialist",
+                        )
+                        pendingTeleconsultSessionId = null
+                        pendingTeleconsultSpecialist = null
                     }
 
                     if (!pendingSessionId.isNullOrBlank() &&
@@ -568,7 +621,52 @@ class MainActivity : ComponentActivity() {
                                 onBack = { currentScreen = homeScreen },
                             )
                         }
+
+                        AppScreen.TELECONSULT -> {
+                            TeleconsultScreen(
+                                sessionId = selectedTeleconsultSessionId ?: "",
+                                patientEmail = loggedInUserEmail,
+                                onHangUp = {
+                                    selectedTeleconsultSessionId = null
+                                    currentScreen = if (loggedInUserRole == "MBBS_DOCTOR")
+                                        AppScreen.MBBS_DOCTOR_DASHBOARD
+                                    else if (loggedInUserRole == "CAREGIVER")
+                                        AppScreen.CAREGIVER_DASHBOARD
+                                    else
+                                        AppScreen.DASHBOARD
+                                },
+                            )
+                        }
                     }
+
+                    // Incoming teleconsult overlay (slides from top)
+                    IncomingCallOverlay(
+                        callInfo = incomingCall,
+                        onAccept = { info ->
+                            incomingCall = null
+                            selectedTeleconsultSessionId = info.sessionId
+                            currentScreen = AppScreen.TELECONSULT
+                            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                                try {
+                                    RetrofitClient.apiService.updateTeleconsultSessionStatus(
+                                        info.sessionId,
+                                        mapOf("status" to "ACTIVE"),
+                                    )
+                                } catch (_: Exception) { }
+                            }
+                        },
+                        onDecline = { info ->
+                            incomingCall = null
+                            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                                try {
+                                    RetrofitClient.apiService.updateTeleconsultSessionStatus(
+                                        info.sessionId,
+                                        mapOf("status" to "CANCELLED"),
+                                    )
+                                } catch (_: Exception) { }
+                            }
+                        },
+                    )
                 }
             }
         }

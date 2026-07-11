@@ -69,6 +69,19 @@ class HhdmsFirebaseMessagingService : FirebaseMessagingService() {
                 startActivity(intent)
             }
         }
+
+        if (data["type"] == "teleconsult_request") {
+            val teleconsultSessionId = data["session_id"]
+            if (teleconsultSessionId != null) {
+                val specialistName = data["specialist_name"] ?: "Specialist"
+                val intent = Intent(this, MainActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    putExtra("teleconsult_session_id", teleconsultSessionId)
+                    putExtra("teleconsult_specialist_name", specialistName)
+                }
+                startActivity(intent)
+            }
+        }
     }
 
     private fun showNotification(title: String, body: String, sessionId: String?, consentPatientId: String? = null) {
