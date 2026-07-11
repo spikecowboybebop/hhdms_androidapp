@@ -148,9 +148,7 @@ fun NotificationsScreen(
                                 NotificationStorage.markAsRead(item.id)
                                 notifications = NotificationStorage.getNotifications()
                             }
-                            if (!item.sessionId.isNullOrBlank()) {
-                                onNotificationTap(item.sessionId)
-                            }
+                            onNotificationTap(item.sessionId)
                         },
                     )
                 }

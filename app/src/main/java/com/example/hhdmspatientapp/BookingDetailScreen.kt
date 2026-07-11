@@ -1,6 +1,7 @@
 package com.example.hhdmspatientapp
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,6 +15,8 @@ import androidx.compose.material.icons.filled.LocalHospital
 import androidx.compose.material.icons.filled.MedicalServices
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,8 +27,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.Intent
+import android.net.Uri
 import com.example.hhdmspatientapp.ui.theme.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -141,6 +147,17 @@ fun BookingDetailScreen(sessionId: String, onBack: () -> Unit) {
 
 @Composable
 fun BookingDetailContent(session: BookingSessionResponse, paddingValues: PaddingValues) {
+    val context = LocalContext.current
+    var reports by remember { mutableStateOf<List<PatientReport>>(emptyList()) }
+    var reportsLoading by remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        try {
+            reports = RetrofitClient.apiService.getSelfReports()
+        } catch (_: Exception) { }
+        reportsLoading = false
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -171,8 +188,128 @@ fun BookingDetailContent(session: BookingSessionResponse, paddingValues: Padding
         }
 
         item {
+            ReportsSection(reports = reports, loading = reportsLoading, context = context)
+        }
+
+        item {
             Spacer(modifier = Modifier.height(16.dp))
         }
+    }
+}
+
+@Composable
+fun ReportsSection(reports: List<PatientReport>, loading: Boolean, context: android.content.Context) {
+    if (loading) {
+        Box(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            CircularProgressIndicator(color = TechTeal, modifier = Modifier.size(24.dp))
+        }
+        return
+    }
+
+    if (reports.isEmpty()) return
+
+    Column {
+        Text(
+            text = "Reports (${reports.size})",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = TitleBlack,
+            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+
+        reports.forEach { report ->
+            ReportCard(report = report, context = context)
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+    }
+}
+
+@Composable
+fun ReportCard(report: PatientReport, context: android.content.Context) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                if (!report.file_url.isNullOrBlank()) {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(report.file_url))
+                    context.startActivity(intent)
+                }
+            },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = PureWhite),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .background(TechTeal.copy(alpha = 0.12f), RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Default.Description,
+                    contentDescription = null,
+                    tint = TechTeal,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+            Spacer(modifier = Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = report.report_type.replace("_", " "),
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TitleBlack,
+                )
+                if (!report.generated_at.isNullOrBlank()) {
+                    Text(
+                        text = formatDate(report.generated_at),
+                        fontSize = 12.sp,
+                        color = CoolGray,
+                    )
+                }
+                if (report.file_size != null && report.file_size > 0) {
+                    Text(
+                        text = formatFileSize(report.file_size),
+                        fontSize = 11.sp,
+                        color = CoolGray.copy(alpha = 0.7f),
+                    )
+                }
+            }
+            Icon(
+                Icons.AutoMirrored.Filled.OpenInNew,
+                contentDescription = "Open",
+                tint = TechTeal,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+    }
+}
+
+private fun formatDate(dateStr: String?): String {
+    if (dateStr == null) return ""
+    return try {
+        val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+        val outputFormat = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
+        val date = inputFormat.parse(dateStr.take(19))
+        date?.let { outputFormat.format(it) } ?: dateStr.take(10)
+    } catch (_: Exception) {
+        dateStr.take(10)
+    }
+}
+
+private fun formatFileSize(size: Int): String {
+    return when {
+        size < 1024 -> "$size B"
+        size < 1024 * 1024 -> "${size / 1024} KB"
+        else -> String.format("%.1f MB", size / (1024 * 1024f))
     }
 }
 

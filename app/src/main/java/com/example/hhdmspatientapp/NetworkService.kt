@@ -236,6 +236,15 @@ data class DiagnosisRecord(
     val icd10: DiagnosisIcd10Ref? = null,
 )
 
+data class PatientReport(
+    val id: String,
+    val report_type: String,
+    val file_url: String? = null,
+    val file_name: String? = null,
+    val file_size: Int? = null,
+    val generated_at: String? = null,
+)
+
 data class PendingNotification(
     val id: String,
     val title: String,
@@ -654,6 +663,9 @@ interface AuthApiService {
     @Multipart
     @POST("patients/self/documents")
     suspend fun uploadPatientDocument(@Part file: MultipartBody.Part): PatientDocument
+
+    @GET("patients/self/reports")
+    suspend fun getSelfReports(): List<PatientReport>
 
 }
 

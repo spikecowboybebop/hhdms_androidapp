@@ -381,6 +381,8 @@ class MainActivity : ComponentActivity() {
                                             AppScreen.MBBS_BOOKING_DETAIL
                                         else
                                             AppScreen.BOOKING_DETAIL
+                                    } else {
+                                        currentScreen = AppScreen.APPOINTMENTS
                                     }
                                 },
                             )
