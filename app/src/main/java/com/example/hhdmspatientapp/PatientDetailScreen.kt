@@ -1,5 +1,7 @@
 package com.example.hhdmspatientapp
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -17,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -172,47 +175,89 @@ fun PatientDetailScreen(
                         }
                     }
 
-                    if (p.has_emergency_flag != true) {
-                        Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
 
-                        var isVisiting by remember { mutableStateOf(VisitStorage.getVisitingPatientId() == patientId) }
-                        var visitLoading by remember { mutableStateOf(false) }
+                    var isVisiting by remember { mutableStateOf(VisitStorage.getVisitingPatientId() == patientId) }
+                    var visitLoading by remember { mutableStateOf(false) }
+                    var showConfirmDialog by remember { mutableStateOf(false) }
+                    val blinkAlpha = remember { Animatable(1f) }
 
-                        Button(
-                            onClick = {
-                                scope.launch {
-                                    visitLoading = true
-                                    try {
-                                        RetrofitClient.apiService.startPatientVisit(patientId)
-                                        VisitStorage.saveVisitingPatientId(patientId)
-                                        isVisiting = true
-                                    } catch (_: Exception) { }
-                                    visitLoading = false
+                    LaunchedEffect(isVisiting) {
+                        if (isVisiting) {
+                            while (true) {
+                                blinkAlpha.animateTo(0.15f, tween(600))
+                                blinkAlpha.animateTo(1f, tween(600))
+                            }
+                        } else {
+                            blinkAlpha.snapTo(1f)
+                        }
+                    }
+
+                    Button(
+                        onClick = { showConfirmDialog = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .height(48.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isVisiting) TechTeal.copy(alpha = 0.15f) else TechTeal,
+                            contentColor = if (isVisiting) TechTeal else PureWhite,
+                        ),
+                        enabled = !visitLoading && !isVisiting,
+                    ) {
+                        if (visitLoading) {
+                            CircularProgressIndicator(color = PureWhite, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        } else if (isVisiting) {
+                            Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("You are visiting this patient", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = TechTeal, modifier = Modifier.graphicsLayer(alpha = blinkAlpha.value))
+                        } else {
+                            Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Visit Patient", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        }
+                    }
+
+                    if (showConfirmDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showConfirmDialog = false },
+                            containerColor = PureWhite,
+                            icon = {
+                                Icon(Icons.Default.Person, contentDescription = null, tint = TechTeal, modifier = Modifier.size(36.dp))
+                            },
+                            title = {
+                                Text("Start Journey", fontWeight = FontWeight.Bold, color = TitleBlack)
+                            },
+                            text = {
+                                Text(
+                                    "Are you sure you want to start your visit to ${patientName}? A notification will be sent to the patient informing them that you are on the way.",
+                                    color = CoolGray,
+                                )
+                            },
+                            confirmButton = {
+                                Button(
+                                    onClick = {
+                                        showConfirmDialog = false
+                                        scope.launch {
+                                            visitLoading = true
+                                            try {
+                                                RetrofitClient.apiService.startPatientVisit(patientId)
+                                                VisitStorage.saveVisitingPatientId(patientId)
+                                                isVisiting = true
+                                            } catch (_: Exception) { }
+                                            visitLoading = false
+                                        }
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = TechTeal),
+                                ) { Text("Yes, Start Visit", color = PureWhite) }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showConfirmDialog = false }) {
+                                    Text("Cancel", color = CoolGray)
                                 }
                             },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp)
-                                .height(48.dp),
-                            shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isVisiting) TechTeal.copy(alpha = 0.15f) else TechTeal,
-                                contentColor = if (isVisiting) TechTeal else PureWhite,
-                            ),
-                            enabled = !visitLoading && !isVisiting,
-                        ) {
-                            if (visitLoading) {
-                                CircularProgressIndicator(color = PureWhite, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                            } else if (isVisiting) {
-                                Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("You are visiting this patient", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            } else {
-                                Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Start Visit — Notify Patient", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            }
-                        }
+                        )
                     }
 
                     Spacer(modifier = Modifier.height(4.dp))
