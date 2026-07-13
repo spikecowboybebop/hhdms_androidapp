@@ -43,7 +43,7 @@ enum class AppScreen {
     MBBS_VITALS, MBBS_DIAGNOSIS, MBBS_PRESCRIPTION, MBBS_TEST_ORDERS, MBBS_REFERRAL,
     CAREGIVER_DASHBOARD, CAREGIVER_PATIENT_LIST, CAREGIVER_PATIENT_DETAIL,
     CAREGIVER_ACTIVITY_LOG, CAREGIVER_CONDITION_REPORT, CAREGIVER_CHECK_IN_OUT,
-    TELECONSULT, CHAT,
+    TELECONSULT, CHAT, PATIENT_INFO,
 }
 
 class MainActivity : ComponentActivity() {
@@ -367,6 +367,7 @@ class MainActivity : ComponentActivity() {
                             AppScreen.DOCTOR_TRACKING -> currentScreen = homeScreen
                             AppScreen.APPOINTMENTS -> currentScreen = homeScreen
                             AppScreen.NOTIFICATIONS -> currentScreen = homeScreen
+                            AppScreen.PATIENT_INFO -> currentScreen = AppScreen.DASHBOARD
                             AppScreen.BOOKING_DETAIL -> currentScreen = bookingOrigin
                             AppScreen.MBBS_BOOKING_DETAIL -> currentScreen = bookingOrigin
                             else -> finishAffinity()
@@ -442,6 +443,15 @@ class MainActivity : ComponentActivity() {
                                     chatOtherName = name
                                     currentScreen = AppScreen.CHAT
                                 },
+                                onNavigateToPatientInfo = {
+                                    currentScreen = AppScreen.PATIENT_INFO
+                                },
+                            )
+                        }
+
+                        AppScreen.PATIENT_INFO -> {
+                            PatientInfoScreen(
+                                onBack = { currentScreen = AppScreen.DASHBOARD },
                             )
                         }
 

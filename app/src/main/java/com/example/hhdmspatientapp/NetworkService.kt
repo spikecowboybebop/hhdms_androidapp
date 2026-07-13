@@ -150,6 +150,8 @@ data class MbbsPatientSummary(
     val current_medications: String? = null,
     val past_medical_history: String? = null,
     val family_history: String? = null,
+    val appointment_activity: String? = null,
+    val patient_consent: String? = null,
 )
 
 data class MbbsPatientProfileResponse(
