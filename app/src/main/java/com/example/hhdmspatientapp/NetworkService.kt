@@ -278,6 +278,54 @@ data class PaymentStatusResponse(
     val paymentId: String? = null,
 )
 
+data class ChatConversation(
+    val id: String,
+    val assignment_id: String,
+    val doctor_id: String,
+    val patient_id: String,
+    val created_at: String? = null,
+    val updated_at: String? = null,
+    val assignment: ChatAssignment? = null,
+    val doctor: ChatUser? = null,
+    val patient: ChatPatient? = null,
+    val messages: List<ChatMessage> = emptyList(),
+)
+
+data class ChatAssignment(
+    val appointment_activity: String? = null,
+    val patient_consent: String? = null,
+)
+
+data class ChatUser(
+    val id: String,
+    val firstNameEn: String? = null,
+    val lastNameEn: String? = null,
+)
+
+data class ChatPatient(
+    val id: String,
+    val first_name_en: String? = null,
+    val last_name_en: String? = null,
+)
+
+data class ChatMessage(
+    val id: String,
+    val conversation_id: String,
+    val sender_id: String,
+    val content: String,
+    val read: Boolean = false,
+    val created_at: String? = null,
+)
+
+data class SendMessageRequest(
+    val content: String,
+)
+
+data class UnreadCount(
+    val conversationId: String,
+    val unreadCount: Int,
+)
+
 data class PendingNotification(
     val id: String,
     val title: String,
@@ -721,6 +769,31 @@ interface AuthApiService {
 
     @GET("payments/status/{sessionId}")
     suspend fun getPaymentStatus(@Path("sessionId") sessionId: String): PaymentStatusResponse
+
+    // ── Chat Endpoints ──
+    @GET("chat/conversations")
+    suspend fun getChatConversations(): List<ChatConversation>
+
+    @POST("chat/start")
+    suspend fun startChat(): ChatConversation
+
+    @GET("chat/unread")
+    suspend fun getChatUnreadCounts(): List<UnreadCount>
+
+    @POST("chat/conversation/{assignmentId}")
+    suspend fun getOrCreateConversation(@Path("assignmentId") assignmentId: String): ChatConversation
+
+    @GET("chat/{conversationId}/messages")
+    suspend fun getChatMessages(@Path("conversationId") conversationId: String): List<ChatMessage>
+
+    @POST("chat/{conversationId}/messages")
+    suspend fun sendChatMessage(
+        @Path("conversationId") conversationId: String,
+        @Body request: SendMessageRequest,
+    ): ChatMessage
+
+    @POST("chat/{conversationId}/read")
+    suspend fun markChatRead(@Path("conversationId") conversationId: String)
 
 }
 

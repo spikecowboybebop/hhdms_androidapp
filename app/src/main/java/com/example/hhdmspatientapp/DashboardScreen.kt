@@ -3,6 +3,7 @@ package com.example.hhdmspatientapp
 import android.Manifest
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -21,6 +22,7 @@ import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.CallEnd
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.LocalPharmacy
@@ -62,7 +64,7 @@ enum class CallStatus {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DashboardScreen(userEmail: String, latestSession: SessionSummary? = null, doctorName: String? = null, onLogout: () -> Unit, onNavigateToNotifications: () -> Unit, onNavigateToAppointments: () -> Unit, onNavigateToBookingDetail: (String) -> Unit = {}, onNavigateToDoctorTracking: () -> Unit = {}, onCallEndedRefresh: () -> Unit = {}) {
+fun DashboardScreen(userEmail: String, latestSession: SessionSummary? = null, doctorName: String? = null, onLogout: () -> Unit, onNavigateToNotifications: () -> Unit, onNavigateToAppointments: () -> Unit, onNavigateToBookingDetail: (String) -> Unit = {}, onNavigateToDoctorTracking: () -> Unit = {}, onCallEndedRefresh: () -> Unit = {}, onNavigateToChat: (String, String) -> Unit = { _, _ -> }) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var currentCallStatus by remember { mutableStateOf(CallStatus.IDLE) }
@@ -72,6 +74,30 @@ fun DashboardScreen(userEmail: String, latestSession: SessionSummary? = null, do
     var paymentError by remember { mutableStateOf<String?>(null) }
     var isPaid by remember { mutableStateOf(false) }
     var currentPaymentId by remember { mutableStateOf<String?>(null) }
+    var activeConversation by remember { mutableStateOf<ChatConversation?>(null) }
+    var hasActiveChat by remember { mutableStateOf(false) }
+    var unreadCount by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(Unit) {
+        try {
+            val conversations = RetrofitClient.apiService.getChatConversations()
+            val conv = conversations.firstOrNull()
+            activeConversation = conv
+            hasActiveChat = conv != null
+        } catch (_: Exception) {}
+        try {
+            val counts = RetrofitClient.apiService.getChatUnreadCounts()
+            unreadCount = counts.sumOf { it.unreadCount }
+        } catch (_: Exception) {}
+
+        while (true) {
+            delay(10_000)
+            try {
+                val counts = RetrofitClient.apiService.getChatUnreadCounts()
+                unreadCount = counts.sumOf { it.unreadCount }
+            } catch (_: Exception) {}
+        }
+    }
 
     val onPaymentSuccess: () -> Unit = {
         scope.launch {
@@ -184,6 +210,60 @@ fun DashboardScreen(userEmail: String, latestSession: SessionSummary? = null, do
     val displayName = patientName.replaceFirstChar { it.uppercase() }
 
     Scaffold(
+        floatingActionButton = {
+            if (currentCallStatus == CallStatus.IDLE) {
+                Box {
+                    FloatingActionButton(
+                        onClick = {
+                            val conv = activeConversation
+                            if (conv != null) {
+                                val dName = conv.doctor?.let { "${it.firstNameEn ?: ""} ${it.lastNameEn ?: ""}".trim() } ?: "Doctor"
+                                unreadCount = 0
+                                onNavigateToChat(conv.id, dName)
+                            } else {
+                                scope.launch {
+                                    try {
+                                        val newConv = RetrofitClient.apiService.startChat()
+                                        activeConversation = newConv
+                                        val dName = newConv.doctor?.let { "${it.firstNameEn ?: ""} ${it.lastNameEn ?: ""}".trim() } ?: "Doctor"
+                                        unreadCount = 0
+                                        onNavigateToChat(newConv.id, dName)
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "No active appointment to chat about", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        },
+                        containerColor = TechTeal,
+                        contentColor = PureWhite,
+                        shape = CircleShape,
+                    ) {
+                        Icon(
+                            Icons.Default.Chat,
+                            contentDescription = "Chat with Doctor",
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
+                    if (unreadCount > 0) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .offset(x = 4.dp, y = (-4).dp)
+                                .size(20.dp)
+                                .background(Color(0xFFFF3B30), CircleShape),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = if (unreadCount > 9) "9+" else "$unreadCount",
+                                color = PureWhite,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                    }
+                }
+            }
+        },
         topBar = {
             if (currentCallStatus == CallStatus.IDLE) {
                 TopAppBar(

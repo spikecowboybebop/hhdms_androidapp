@@ -43,7 +43,7 @@ enum class AppScreen {
     MBBS_VITALS, MBBS_DIAGNOSIS, MBBS_PRESCRIPTION, MBBS_TEST_ORDERS, MBBS_REFERRAL,
     CAREGIVER_DASHBOARD, CAREGIVER_PATIENT_LIST, CAREGIVER_PATIENT_DETAIL,
     CAREGIVER_ACTIVITY_LOG, CAREGIVER_CONDITION_REPORT, CAREGIVER_CHECK_IN_OUT,
-    TELECONSULT,
+    TELECONSULT, CHAT,
 }
 
 class MainActivity : ComponentActivity() {
@@ -119,6 +119,8 @@ class MainActivity : ComponentActivity() {
                     var bookingOrigin by remember { mutableStateOf(AppScreen.DASHBOARD) }
                     var selectedTeleconsultSessionId by remember { mutableStateOf<String?>(null) }
                     var incomingCall by remember { mutableStateOf<IncomingCallInfo?>(null) }
+                    var chatConversationId by remember { mutableStateOf("") }
+                    var chatOtherName by remember { mutableStateOf("") }
 
                     notificationIntentCount // read to trigger recomposition on new intent
 
@@ -356,6 +358,7 @@ class MainActivity : ComponentActivity() {
                             AppScreen.CAREGIVER_PATIENT_DETAIL -> currentScreen = AppScreen.CAREGIVER_PATIENT_LIST
                             AppScreen.PATIENT_ASSIGNMENTS -> currentScreen = AppScreen.MBBS_DOCTOR_DASHBOARD
                             AppScreen.PATIENT_DETAIL -> currentScreen = AppScreen.PATIENT_ASSIGNMENTS
+                            AppScreen.CHAT -> currentScreen = homeScreen
                             AppScreen.MBBS_VITALS,
                             AppScreen.MBBS_DIAGNOSIS,
                             AppScreen.MBBS_PRESCRIPTION,
@@ -434,6 +437,11 @@ class MainActivity : ComponentActivity() {
                                     currentScreen = AppScreen.DOCTOR_TRACKING
                                 },
                                 onCallEndedRefresh = { sessionLoadKey++ },
+                                onNavigateToChat = { convId, name ->
+                                    chatConversationId = convId
+                                    chatOtherName = name
+                                    currentScreen = AppScreen.CHAT
+                                },
                             )
                         }
 
@@ -450,6 +458,11 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onNavigateToPatientAssignments = {
                                     currentScreen = AppScreen.PATIENT_ASSIGNMENTS
+                                },
+                                onNavigateToChat = { convId, name ->
+                                    chatConversationId = convId
+                                    chatOtherName = name
+                                    currentScreen = AppScreen.CHAT
                                 },
                             )
                         }
@@ -677,6 +690,13 @@ class MainActivity : ComponentActivity() {
                                     else
                                         AppScreen.DASHBOARD
                                 },
+                            )
+                        }
+                        AppScreen.CHAT -> {
+                            ChatScreen(
+                                conversationId = chatConversationId,
+                                otherUserName = chatOtherName,
+                                onBack = { currentScreen = homeScreen },
                             )
                         }
                     }
