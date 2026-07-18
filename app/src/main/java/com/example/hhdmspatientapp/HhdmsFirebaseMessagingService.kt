@@ -1,5 +1,6 @@
 package com.example.hhdmspatientapp
 
+import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
@@ -16,6 +17,7 @@ class HhdmsFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onCreate() {
         super.onCreate()
+        TokenManager.init(applicationContext)
         NotificationStorage.init(applicationContext)
         FcmTokenStorage.init(applicationContext)
         VisitStorage.init(applicationContext)
@@ -46,6 +48,7 @@ class HhdmsFirebaseMessagingService : FirebaseMessagingService() {
             ),
         )
 
+        // Show system notification for all other types
         val isConsentRequest = data["type"] == "consent_request"
         showNotification(title, body, data["session_id"], if (isConsentRequest) data["patient_id"] else null)
 
@@ -63,31 +66,6 @@ class HhdmsFirebaseMessagingService : FirebaseMessagingService() {
             VisitStorage.clearVisitingPatientId()
             VisitStorage.saveAppointmentDone()
             Log.d(TAG, "Appointment done, visit cleared")
-        }
-
-        if (data["type"] == "consent_request") {
-            val patientId = data["patient_id"]
-            if (patientId != null) {
-                // Open MainActivity with consent_patient_id to trigger the dialog
-                val intent = Intent(this, MainActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                    putExtra("consent_patient_id", patientId)
-                }
-                startActivity(intent)
-            }
-        }
-
-        if (data["type"] == "teleconsult_request") {
-            val teleconsultSessionId = data["session_id"]
-            if (teleconsultSessionId != null) {
-                val specialistName = data["specialist_name"] ?: "Specialist"
-                val intent = Intent(this, MainActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                    putExtra("teleconsult_session_id", teleconsultSessionId)
-                    putExtra("teleconsult_specialist_name", specialistName)
-                }
-                startActivity(intent)
-            }
         }
     }
 

@@ -188,18 +188,6 @@ data class ReferralChainEvent(
     val created_at: String? = null,
 )
 
-data class TeleconsultSessionResponse(
-    val id: String? = null,
-    val referral_id: String? = null,
-    val patient_id: String? = null,
-    val specialist_id: String? = null,
-    val status: String? = null,
-    val room_name: String? = null,
-    val started_at: String? = null,
-    val ended_at: String? = null,
-    val created_at: String? = null,
-)
-
 data class PatientDocument(
     val id: String? = null,
     val patient_id: String? = null,
@@ -750,18 +738,6 @@ interface AuthApiService {
     @GET("patients/self/reports")
     suspend fun getSelfReports(): List<PatientReport>
 
-    // ── Teleconsult Endpoints ──
-    @POST("api/teleconsult/sessions")
-    suspend fun createTeleconsultSession(@Body request: Map<String, String>): TeleconsultSessionResponse
-
-    @GET("api/teleconsult/sessions/by-referral/{referralId}")
-    suspend fun getTeleconsultSessionByReferral(@Path("referralId") referralId: String): TeleconsultSessionResponse
-
-    @PATCH("api/teleconsult/sessions/{id}/status")
-    suspend fun updateTeleconsultSessionStatus(
-        @Path("id") id: String,
-        @Body request: Map<String, String>,
-    ): TeleconsultSessionResponse
     // ── Payment Endpoints ──
     @POST("payments/create-intent")
     suspend fun createPaymentIntent(@Body request: CreatePaymentRequest): PaymentIntentResponse
@@ -804,7 +780,7 @@ interface AuthApiService {
 // =============================================================================
 object RetrofitClient {
     // 10.0.2.2 automatically bridges out to your host development computer's localhost:3000
-    private const val BASE_URL = "http://192.168.1.40:3001"
+    private const val BASE_URL = "http://192.168.0.101:3001"
 
     private val okHttpClient = okhttp3.OkHttpClient.Builder()
         .addInterceptor { chain ->

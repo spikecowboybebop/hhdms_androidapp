@@ -11,7 +11,7 @@ import java.net.URISyntaxException
 
 object CallSignalingManager {
     private const val TAG = "CallSignalingManager"
-    private const val SERVER_URL = "http://192.168.0.148:4000"
+    private const val SERVER_URL = "http://192.168.0.101:3001"
 
     private var mSocket: Socket? = null
     private var peerConnectionFactory: PeerConnectionFactory? = null
@@ -20,41 +20,49 @@ object CallSignalingManager {
     private var audioSource: AudioSource? = null
     private var audioManager: AudioManager? = null
 
-    // 📍 TRACKERS
+    // Trackers
     private var agentSocketId: String? = null
     private var currentPatientEmail: String? = null
-    // Holding pen for early network pathways generated before agent accepts
     private val earlyIceCandidates = ArrayList<IceCandidate>()
 
     // Callback for UI state updates
     var onCallStateChange: ((CallStatus) -> Unit)? = null
 
-    fun initialize(context: Context) {
-        if (mSocket != null) return // Already setup
+    // Video call callbacks
+    var onIncomingVideoCall: ((specialistName: String, sessionId: String) -> Unit)? = null
+    var onVideoCallReady: ((token: String, appId: String, channelName: String, uid: Int) -> Unit)? = null
+    var onVideoCallEnded: (() -> Unit)? = null
 
-        // Initialize Android's native Hardware AudioManager reference container
+    fun initialize(context: Context) {
+        if (mSocket != null) return
+
         audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
         try {
             mSocket = IO.socket(SERVER_URL)
 
             mSocket?.on(Socket.EVENT_CONNECT) {
-                Log.d(TAG, "🔌 Connected to NestJS Signaling Server!")
+                Log.d(TAG, "=== Connected to NestJS Signaling Server! Socket ID: ${mSocket?.id()} ===")
             }
 
-            // Listens for when the Web Agent accepts the phone's incoming call
+            mSocket?.on(Socket.EVENT_DISCONNECT) {
+                Log.w(TAG, "=== DISCONNECTED from Signaling Server ===")
+            }
+
+            mSocket?.on(Socket.EVENT_CONNECT_ERROR) { args ->
+                Log.e(TAG, "=== SOCKET CONNECTION ERROR: ${args.firstOrNull()} ===")
+            }
+
             mSocket?.on("call-routing-connected") { args ->
                 try {
                     val response = args[0] as JSONObject
                     val sdpAnswerData = response.getJSONObject("sdpAnswer")
 
-                    // Capture the real agent socket ID
                     agentSocketId = response.optString("agentSocketId")
                     val currentAgentId = agentSocketId
 
-                    Log.d(TAG, "🎙️ Web Agent answered! Processing response hardware signature...")
+                    Log.d(TAG, "Web Agent answered! Processing response...")
 
-                    // 🚀 CRITICAL FIX: Route incoming stream packets straight to the physical speakers
                     configureAudioHardwareForCall(true)
 
                     val rtcAnswer = SessionDescription(
@@ -62,23 +70,20 @@ object CallSignalingManager {
                         sdpAnswerData.getString("sdp")
                     )
 
-                    // Bind the agent's mic setup parameters to your phone's ear speaker line
                     peerConnection?.setRemoteDescription(object : SdpObserver {
                         override fun onCreateSuccess(p0: SessionDescription?) {}
                         override fun onSetSuccess() {
-                            Log.d(TAG, "✅ WebRTC Peer Connection is officially ACTIVE and LINKED!")
+                            Log.d(TAG, "WebRTC Peer Connection is ACTIVE!")
 
-                            // Notify UI that the call is connected
                             onCallStateChange?.invoke(CallStatus.CONNECTED)
 
-                            // Flush out any stashed candidates immediately down the active line
                             if (!currentAgentId.isNullOrEmpty()) {
                                 synchronized(earlyIceCandidates) {
-                                    Log.d(TAG, "🛰️ Sending ${earlyIceCandidates.size} stashed ICE candidates to Agent...")
+                                    Log.d(TAG, "Sending ${earlyIceCandidates.size} stashed ICE candidates to Agent...")
                                     for (candidate in earlyIceCandidates) {
                                         sendIceCandidateToAgent(currentAgentId, candidate)
                                     }
-                                    earlyIceCandidates.clear() // Clean up memory allocation
+                                    earlyIceCandidates.clear()
                                 }
                             }
                         }
@@ -102,29 +107,63 @@ object CallSignalingManager {
                             candidateObj.getString("candidate")
                         )
                         peerConnection?.addIceCandidate(iceCandidate)
-                        Log.d(TAG, "🛰️ Successfully appended network pathway from Web Agent onto native hardware layout.")
+                        Log.d(TAG, "Successfully appended remote ICE candidate.")
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "Error parsing incoming remote ICE candidate: ${e.message}")
                 }
             }
 
-            // Listen for remote hangup from the agent
             mSocket?.on("call-ended") {
-                Log.d(TAG, "📞 Remote party hung up the call!")
+                Log.d(TAG, "Remote party hung up the call!")
                 hangUpActiveCall()
                 onCallStateChange?.invoke(CallStatus.IDLE)
             }
 
+            // Video call events
+            mSocket?.on("video-call:ringing") { args ->
+                try {
+                    Log.d(TAG, "=== video-call:ringing RECEIVED === args.size=${args.size}")
+                    val data = args[0] as JSONObject
+                    Log.d(TAG, "video-call:ringing data: $data")
+                    val sessionId = data.getString("sessionId")
+                    val specialistName = data.optString("specialistName", "Specialist")
+                    val channelName = data.optString("channelName", "")
+                    Log.d(TAG, "Incoming video call: session=$sessionId from=$specialistName channel=$channelName")
+                    Log.d(TAG, "onIncomingVideoCall callback is ${if (onIncomingVideoCall != null) "SET" else "NULL"}")
+                    onIncomingVideoCall?.invoke(specialistName, sessionId)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error parsing video-call:ringing: ${e.message}", e)
+                }
+            }
+
+            mSocket?.on("video-call:ready") { args ->
+                try {
+                    Log.d(TAG, "=== video-call:ready RECEIVED ===")
+                    val data = args[0] as JSONObject
+                    val token = data.getString("token")
+                    val appId = data.getString("appId")
+                    val channelName = data.getString("channelName")
+                    val uid = data.optInt("uid", 2)
+                    Log.d(TAG, "Video call ready: channel=$channelName uid=$uid appId=$appId")
+                    onVideoCallReady?.invoke(token, appId, channelName, uid)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error parsing video-call:ready: ${e.message}", e)
+                }
+            }
+
+            mSocket?.on("video-call:end") {
+                Log.d(TAG, "Video call ended by remote")
+                onVideoCallEnded?.invoke()
+            }
+
             mSocket?.connect()
 
-            // Initialize Google's global WebRTC hardware contexts safely
             PeerConnectionFactory.initialize(
                 PeerConnectionFactory.InitializationOptions.builder(context)
                     .createInitializationOptions()
             )
 
-            // Build the structural pipeline factory engine
             peerConnectionFactory = PeerConnectionFactory.builder()
                 .setOptions(PeerConnectionFactory.Options())
                 .createPeerConnectionFactory()
@@ -140,27 +179,29 @@ object CallSignalingManager {
             return
         }
 
-        // Make sure previous connections are cleanly purged from device memory first
         hangUpActiveCall()
         currentPatientEmail = patientEmail
 
-        // Capture real hardware microphone streams
-        audioSource = peerConnectionFactory?.createAudioSource(MediaConstraints())
+        val audioConstraints = MediaConstraints().apply {
+            mandatory.add(MediaConstraints.KeyValuePair("googEchoCancellation", "false"))
+            mandatory.add(MediaConstraints.KeyValuePair("googAutoGainControl", "false"))
+            mandatory.add(MediaConstraints.KeyValuePair("googNoiseSuppression", "false"))
+            mandatory.add(MediaConstraints.KeyValuePair("googHighpassFilter", "false"))
+        }
+        audioSource = peerConnectionFactory?.createAudioSource(audioConstraints)
         localAudioTrack = peerConnectionFactory?.createAudioTrack("ARDAMSa0", audioSource)
 
-        // Set up public ICE network configurations
         val iceServers = listOf(PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer())
         val rtcConfig = PeerConnection.RTCConfiguration(iceServers)
 
-        // Create our peer link infrastructure
         peerConnection = peerConnectionFactory?.createPeerConnection(rtcConfig, object : PeerConnection.Observer {
             override fun onSignalingChange(state: PeerConnection.SignalingState?) {}
             override fun onIceConnectionChange(state: PeerConnection.IceConnectionState?) {
-                Log.d(TAG, "📶 ICE Connection State Changed: ${state?.name}")
+                Log.d(TAG, "ICE Connection State Changed: ${state?.name}")
                 when (state) {
                     PeerConnection.IceConnectionState.DISCONNECTED,
                     PeerConnection.IceConnectionState.FAILED -> {
-                        Log.d(TAG, "⚠️ ICE connection lost or failed. Cleaning up...")
+                        Log.d(TAG, "ICE connection lost or failed. Cleaning up...")
                         hangUpActiveCall()
                         onCallStateChange?.invoke(CallStatus.IDLE)
                     }
@@ -175,20 +216,18 @@ object CallSignalingManager {
                     val currentAgentId = agentSocketId
 
                     if (currentAgentId.isNullOrEmpty()) {
-                        // If the agent hasn't clicked accept yet, cache it safely
                         synchronized(earlyIceCandidates) {
                             earlyIceCandidates.add(candidate)
                         }
-                        Log.d(TAG, "📦 ICE Candidate gathered early. Stashed safety config framework.")
+                        Log.d(TAG, "ICE Candidate gathered early. Stashed.")
                     } else {
-                        // If agent is already connected, send it over right away!
                         sendIceCandidateToAgent(currentAgentId, candidate)
                     }
                 }
             }
             override fun onIceCandidatesRemoved(p0: Array<out IceCandidate>?) {}
             override fun onAddStream(stream: MediaStream?) {
-                Log.d(TAG, "🎵 Remote WebRTC Audio Stream detected from Agent. Attaching...")
+                Log.d(TAG, "Remote WebRTC Audio Stream detected. Attaching...")
             }
             override fun onRemoveStream(p0: MediaStream?) {}
             override fun onDataChannel(p0: DataChannel?) {}
@@ -196,10 +235,8 @@ object CallSignalingManager {
             override fun onAddTrack(p0: RtpReceiver?, p1: Array<out MediaStream>?) {}
         })
 
-        // Bind the live microphone data track to the outgoing connection pipeline link
         peerConnection?.addTrack(localAudioTrack, listOf("ARDAMSms0"))
 
-        // Create a real authentic WebRTC SDP Offer signature package!
         val mediaConstraints = MediaConstraints().apply {
             mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
         }
@@ -211,13 +248,12 @@ object CallSignalingManager {
                 peerConnection?.setLocalDescription(object : SdpObserver {
                     override fun onCreateSuccess(p0: SessionDescription?) {}
                     override fun onSetSuccess() {
-                        Log.d(TAG, "📝 Local description frame signature bound successfully.")
+                        Log.d(TAG, "Local description bound successfully.")
                     }
                     override fun onCreateFailure(p0: String?) {}
                     override fun onSetFailure(p0: String?) { Log.e(TAG, "Failed to bind local description: $p0") }
                 }, description)
 
-                // Fire the authentic cryptographic SDP payload down the signaling wire!
                 val dialPayload = JSONObject().apply {
                     put("patientEmail", patientEmail)
                     put("sdpOffer", JSONObject().apply {
@@ -226,7 +262,7 @@ object CallSignalingManager {
                     })
                 }
                 mSocket?.emit("call-center-dial", dialPayload)
-                Log.d(TAG, "🚀 Real cryptographic WebRTC call offer fired down the wire!")
+                Log.d(TAG, "WebRTC call offer fired down the wire!")
             }
             override fun onSetSuccess() {}
             override fun onCreateFailure(p0: String?) { Log.e(TAG, "SDP Creation Failed: $p0") }
@@ -234,40 +270,30 @@ object CallSignalingManager {
         }, mediaConstraints)
     }
 
-    /**
-     * 🚀 NEW: Explicit Audio Hardware Routing Manager
-     * Switches the system audio layer from normal multimedia mode into high-priority VoIP mode.
-     */
     private fun configureAudioHardwareForCall(activate: Boolean) {
         try {
             audioManager?.let { am ->
                 if (activate) {
                     am.mode = AudioManager.MODE_IN_COMMUNICATION
-                    am.isSpeakerphoneOn = true // Routes to outer speaker layout for seamless testing
-                    Log.d(TAG, "🔊 Android system hardware successfully hijacked into MODE_IN_COMMUNICATION.")
+                    am.isSpeakerphoneOn = true
+                    Log.d(TAG, "Android system hardware switched to MODE_IN_COMMUNICATION.")
                 } else {
                     am.mode = AudioManager.MODE_NORMAL
                     am.isSpeakerphoneOn = false
-                    Log.d(TAG, "🔇 Android system hardware returned safely back to MODE_NORMAL status.")
+                    Log.d(TAG, "Android system hardware returned to MODE_NORMAL.")
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to reconfigure phone device hardware channels: ${e.message}")
+            Log.e(TAG, "Failed to reconfigure phone audio hardware: ${e.message}")
         }
     }
 
-    /**
-     * Dynamic Cleanup Routine
-     * Ensures absolute execution hygiene so subsequent redials clear media tracks cleanly.
-     */
     fun hangUpActiveCall() {
         try {
-            // Notify the signaling server that this client is ending the call
             mSocket?.emit("end-call", JSONObject().apply {
                 put("targetSocketId", agentSocketId ?: "")
             })
 
-            // Restore native hardware routing controls safely
             configureAudioHardwareForCall(false)
 
             agentSocketId = null
@@ -283,13 +309,78 @@ object CallSignalingManager {
 
             audioSource?.dispose()
             audioSource = null
-            Log.d(TAG, "🧼 Call structural components destroyed. Hardware paths reset.")
+            Log.d(TAG, "Call resources cleaned up.")
         } catch (e: Exception) {
             Log.e(TAG, "Error cleaning up WebRTC resources: ${e.message}")
         }
     }
 
-    // Helper function to format and send candidates uniformly over Socket.io
+    fun destroy() {
+        hangUpActiveCall()
+        mSocket?.disconnect()
+        mSocket?.off()
+        mSocket = null
+    }
+
+    // ── Video Call Methods ──
+
+    fun startVideoCall(referralId: String, patientId: String, specialistName: String) {
+        if (mSocket?.connected() != true) {
+            Log.e(TAG, "Cannot start video call. Socket is offline!")
+            return
+        }
+        mSocket?.emit("video-call:start", JSONObject().apply {
+            put("referralId", referralId)
+            put("patientId", patientId)
+            put("specialistName", specialistName)
+        })
+        Log.d(TAG, "Emitted video-call:start for referral=$referralId")
+    }
+
+    fun registerPatient(patientId: String) {
+        if (mSocket?.connected() != true) {
+            Log.w(TAG, "Cannot register patient. Socket offline. Will retry on connect.")
+            mSocket?.once(Socket.EVENT_CONNECT) {
+                Log.d(TAG, "Socket connected — registering patient $patientId")
+                mSocket?.emit("register:patient", JSONObject().apply {
+                    put("patientId", patientId)
+                })
+            }
+            return
+        }
+        mSocket?.emit("register:patient", JSONObject().apply {
+            put("patientId", patientId)
+        })
+        Log.d(TAG, "Registered patient $patientId with video call gateway")
+    }
+
+    fun acceptVideoCall(sessionId: String) {
+        if (mSocket?.connected() != true) {
+            Log.e(TAG, "Cannot accept video call. Socket is offline!")
+            return
+        }
+        mSocket?.emit("video-call:accept", JSONObject().apply {
+            put("sessionId", sessionId)
+        })
+        Log.d(TAG, "Emitted video-call:accept for session=$sessionId")
+    }
+
+    fun declineVideoCall(sessionId: String) {
+        if (mSocket?.connected() != true) return
+        mSocket?.emit("video-call:decline", JSONObject().apply {
+            put("sessionId", sessionId)
+        })
+        Log.d(TAG, "Emitted video-call:decline for session=$sessionId")
+    }
+
+    fun endVideoCall(sessionId: String) {
+        if (mSocket?.connected() != true) return
+        mSocket?.emit("video-call:end", JSONObject().apply {
+            put("sessionId", sessionId)
+        })
+        Log.d(TAG, "Emitted video-call:end for session=$sessionId")
+    }
+
     private fun sendIceCandidateToAgent(agentId: String, candidate: IceCandidate) {
         try {
             val icePayload = JSONObject().apply {
@@ -301,7 +392,7 @@ object CallSignalingManager {
                 })
             }
             mSocket?.emit("relay-ice-candidate", icePayload)
-            Log.d(TAG, "📡 Dispatched phone network ICE Candidate pathway map.")
+            Log.d(TAG, "Dispatched phone ICE candidate.")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to build ICE payload: ${e.message}")
         }

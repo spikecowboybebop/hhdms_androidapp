@@ -10,10 +10,10 @@ import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
-import androidx.core.app.NotificationCompat
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.AlertDialog
@@ -28,6 +28,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.example.hhdmspatientapp.ui.theme.*
 import com.google.firebase.messaging.FirebaseMessaging
@@ -48,6 +49,7 @@ enum class AppScreen {
     NURSE_VITALS, NURSE_MEDICATION, NURSE_IV_FLUID, NURSE_WOUND_CARE,
     NURSE_CARE_REPORT, NURSE_HANDOVER, NURSE_CONSULTATION,
     NURSE_SUPPLY_TRACKING, NURSE_PEDIATRIC_CARE,
+    VIDEO_CALL,
 }
 
 class MainActivity : ComponentActivity() {
@@ -57,29 +59,19 @@ class MainActivity : ComponentActivity() {
 
     private var pendingSessionId by mutableStateOf<String?>(null)
     private var pendingConsentPatientId by mutableStateOf<String?>(null)
-    private var pendingTeleconsultSessionId by mutableStateOf<String?>(null)
-    private var pendingTeleconsultSpecialist by mutableStateOf<String?>(null)
-    private var notificationIntentCount by mutableStateOf(0)
-    private val processedTeleconsultIds = mutableSetOf<String>()
 
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        notificationIntentCount++
         pendingSessionId = intent.getStringExtra("session_id")
         pendingConsentPatientId = intent.getStringExtra("consent_patient_id")
-        pendingTeleconsultSessionId = intent.getStringExtra("teleconsult_session_id")
-        pendingTeleconsultSpecialist = intent.getStringExtra("teleconsult_specialist_name")
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Read session_id from launch intent (cold start from notification tap)
         pendingSessionId = intent.getStringExtra("session_id")
         pendingConsentPatientId = intent.getStringExtra("consent_patient_id")
-        pendingTeleconsultSessionId = intent.getStringExtra("teleconsult_session_id")
-        pendingTeleconsultSpecialist = intent.getStringExtra("teleconsult_specialist_name")
 
         TokenManager.init(applicationContext)
         NotificationStorage.init(applicationContext)
@@ -99,8 +91,6 @@ class MainActivity : ComponentActivity() {
         registerExistingFcmToken()
 
         CallSignalingManager.initialize(applicationContext)
-        TeleconsultSignalingManager.initialize(applicationContext)
-
         setContent {
             HHDMSPatientAppTheme {
                 Surface(
@@ -121,15 +111,66 @@ class MainActivity : ComponentActivity() {
                     var sessionLoadKey by remember { mutableStateOf(0) }
                     var homeScreen by remember { mutableStateOf(AppScreen.DASHBOARD) }
                     var bookingOrigin by remember { mutableStateOf(AppScreen.DASHBOARD) }
+                    var userAuthedThisSession by remember { mutableStateOf(false) }
+
+                    // Video call state
+                    var videoCallSessionId by remember { mutableStateOf<String?>(null) }
+                    var videoCallSpecialistName by remember { mutableStateOf("") }
+                    var videoCallChannelName by remember { mutableStateOf("") }
+                    var videoCallToken by remember { mutableStateOf("") }
+                    var videoCallAppId by remember { mutableStateOf("") }
+                    var videoCallUid by remember { mutableStateOf(2) }
                     var selectedTeleconsultSessionId by remember { mutableStateOf<String?>(null) }
                     var incomingCall by remember { mutableStateOf<IncomingCallInfo?>(null) }
                     var chatConversationId by remember { mutableStateOf("") }
                     var chatOtherName by remember { mutableStateOf("") }
 
-                    notificationIntentCount // read to trigger recomposition on new intent
+                    // Wire video call callbacks from CallSignalingManager
+                    LaunchedEffect(Unit) {
+                        CallSignalingManager.onIncomingVideoCall = { specialistName, sessionId ->
+                            Log.d("MainActivity", "=== onIncomingVideoCall fired: $specialistName, $sessionId ===")
+                            videoCallSpecialistName = specialistName
+                            videoCallSessionId = sessionId
+                        }
+                        CallSignalingManager.onVideoCallReady = { token, appId, channelName, uid ->
+                            Log.d("MainActivity", "=== onVideoCallReady fired: channel=$channelName uid=$uid ===")
+                            videoCallToken = token
+                            videoCallAppId = appId
+                            videoCallChannelName = channelName
+                            videoCallUid = uid
+                            currentScreen = AppScreen.VIDEO_CALL
+                        }
+                        CallSignalingManager.onVideoCallEnded = {
+                            Log.d("MainActivity", "=== onVideoCallEnded fired ===")
+                            videoCallSessionId = null
+                            videoCallChannelName = ""
+                            videoCallToken = ""
+                            if (currentScreen == AppScreen.VIDEO_CALL) {
+                                currentScreen = homeScreen
+                            }
+                        }
+                    }
 
-                    // Transfer pendingConsentPatientId to state (handles both cold
-                    // start from onCreate and warm start from onNewIntent).
+                    // Video call incoming overlay
+                    if (videoCallSessionId != null && currentScreen != AppScreen.VIDEO_CALL) {
+                        IncomingVideoCallModal(
+                            specialistName = videoCallSpecialistName,
+                            onAccept = {
+                                val sid = videoCallSessionId
+                                if (sid != null) {
+                                    CallSignalingManager.acceptVideoCall(sid)
+                                }
+                            },
+                            onDecline = {
+                                val sid = videoCallSessionId
+                                if (sid != null) {
+                                    CallSignalingManager.declineVideoCall(sid)
+                                }
+                                videoCallSessionId = null
+                            },
+                        )
+                    }
+
                     if (pendingConsentPatientId != null && consentRequestPatientId == null) {
                         consentRequestPatientId = pendingConsentPatientId
                         pendingConsentPatientId = null
@@ -137,7 +178,6 @@ class MainActivity : ComponentActivity() {
 
                     LaunchedEffect(sessionLoadKey) {
                         if (sessionLoadKey > 0 && TokenManager.getToken() != null) {
-                            // Ensure FCM token is registered every time polling starts
                             HhdmsFirebaseMessagingService.registerCurrentToken()
 
                             try {
@@ -190,24 +230,10 @@ class MainActivity : ComponentActivity() {
                                             consentRequestPatientId = pid
                                         }
                                     }
-                                    if (n.type == "teleconsult_request") {
-                                        val sid = n.session_id
-                                        if (incomingCall == null && sid != null && !processedTeleconsultIds.contains(sid)) {
-                                            processedTeleconsultIds.add(sid)
-                                            val name = n.body
-                                                .removePrefix("Dr. ")
-                                                .substringBefore(" is calling")
-                                            incomingCall = IncomingCallInfo(
-                                                sessionId = sid,
-                                                specialistName = name,
-                                            )
-                                        }
-                                    }
                                 }
 
                             } catch (_: Exception) { }
 
-                            // Periodic polling while on a dashboard screen
                             while (true) {
                                 delay(15_000)
                                 try {
@@ -247,19 +273,6 @@ class MainActivity : ComponentActivity() {
                                                 consentRequestPatientId = pid
                                             }
                                         }
-                                        if (n.type == "teleconsult_request") {
-                                            val sid = n.session_id
-                                            if (incomingCall == null && sid != null && !processedTeleconsultIds.contains(sid)) {
-                                                processedTeleconsultIds.add(sid)
-                                                val name = n.body
-                                                    .removePrefix("Dr. ")
-                                                    .substringBefore(" is calling")
-                                                incomingCall = IncomingCallInfo(
-                                                    sessionId = sid,
-                                                    specialistName = name,
-                                                )
-                                            }
-                                        }
                                     }
                                 } catch (_: Exception) { }
                             }
@@ -272,7 +285,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    // Consent dialog — shows when consent_patient_id is received from FCM
+                    // Consent dialog
                     if (consentRequestPatientId != null || pendingConsentPatientId != null) {
                         val patientId = consentRequestPatientId ?: pendingConsentPatientId ?: ""
                         AlertDialog(
@@ -319,22 +332,6 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    // Teleconsult deep-link from FCM notification → show incoming call overlay
-                    if (!pendingTeleconsultSessionId.isNullOrBlank()
-                        && incomingCall == null
-                        && TokenManager.getToken() != null
-                        && !processedTeleconsultIds.contains(pendingTeleconsultSessionId)
-                    ) {
-                        val sid = pendingTeleconsultSessionId!!
-                        processedTeleconsultIds.add(sid)
-                        incomingCall = IncomingCallInfo(
-                            sessionId = sid,
-                            specialistName = pendingTeleconsultSpecialist ?: "Specialist",
-                        )
-                        pendingTeleconsultSessionId = null
-                        pendingTeleconsultSpecialist = null
-                    }
-
                     if (!pendingSessionId.isNullOrBlank() &&
                         (currentScreen == AppScreen.DASHBOARD || currentScreen == AppScreen.MBBS_DOCTOR_DASHBOARD || currentScreen == AppScreen.CAREGIVER_DASHBOARD || currentScreen == AppScreen.NURSE_DASHBOARD)
                     ) {
@@ -374,6 +371,16 @@ class MainActivity : ComponentActivity() {
                             AppScreen.PATIENT_INFO -> currentScreen = AppScreen.DASHBOARD
                             AppScreen.BOOKING_DETAIL -> currentScreen = bookingOrigin
                             AppScreen.MBBS_BOOKING_DETAIL -> currentScreen = bookingOrigin
+                            AppScreen.VIDEO_CALL -> {
+                                val sid = videoCallSessionId
+                                if (sid != null) {
+                                    CallSignalingManager.endVideoCall(sid)
+                                }
+                                videoCallSessionId = null
+                                videoCallChannelName = ""
+                                videoCallToken = ""
+                                currentScreen = homeScreen
+                            }
                             else -> finishAffinity()
                         }
                     }
@@ -385,7 +392,26 @@ class MainActivity : ComponentActivity() {
                                 NotificationStorage.setCurrentUser(verifiedEmail)
                                 loggedInUserEmail = verifiedEmail
                                 loggedInUserRole = role
+                                userAuthedThisSession = true
                                 HhdmsFirebaseMessagingService.registerCurrentToken()
+
+                                // Fetch patient ID and register with video call gateway
+                                if (role == "MOBILE_USER") {
+                                    CoroutineScope(Dispatchers.IO).launch {
+                                        try {
+                                            val patientInfo = RetrofitClient.apiService.getSelfPatientInfo()
+                                            val patientId = patientInfo.id
+                                            if (!patientId.isNullOrEmpty()) {
+                                                Log.d("MainActivity", "Fetched patient ID: $patientId — registering with video call gateway")
+                                                CallSignalingManager.registerPatient(patientId)
+                                            } else {
+                                                Log.w("MainActivity", "Patient ID is null/empty from /patients/self")
+                                            }
+                                        } catch (e: Exception) {
+                                            Log.e("MainActivity", "Failed to fetch patient ID: ${e.message}")
+                                        }
+                                    }
+                                }
 
                                 val pendingId = pendingSessionId
                                 pendingSessionId = null
@@ -424,6 +450,30 @@ class MainActivity : ComponentActivity() {
                                 userEmail = loggedInUserEmail,
                                 latestSession = latestSession,
                                 doctorName = latestDoctorName,
+                    onLogout = {
+                        TokenManager.clearToken()
+                        NotificationStorage.setCurrentUser(null)
+                        currentScreen = AppScreen.AUTH
+                    },
+                    onNavigateToNotifications = {
+                        currentScreen = AppScreen.NOTIFICATIONS
+                    },
+                    onNavigateToAppointments = {
+                        currentScreen = AppScreen.APPOINTMENTS
+                    },
+                    onNavigateToBookingDetail = { sessionId ->
+                        bookingOrigin = AppScreen.DASHBOARD
+                        selectedSessionId = sessionId
+                        currentScreen = AppScreen.BOOKING_DETAIL
+                    },
+                    onNavigateToDoctorTracking = {
+                        trackingDoctorName = latestDoctorName ?: ""
+                        trackingPatientId = VisitStorage.getVisitingPatientId()
+                        currentScreen = AppScreen.DOCTOR_TRACKING
+                    },
+                    onCallEndedRefresh = { sessionLoadKey++ },
+                )
+            }
                                 onLogout = {
                                     TokenManager.clearToken()
                                     NotificationStorage.setCurrentUser(null)
@@ -463,14 +513,14 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        AppScreen.MBBS_DOCTOR_DASHBOARD -> {
-                            MbbsDoctorDashboardScreen(
-                                userEmail = loggedInUserEmail,
-                                onLogout = {
-                                    TokenManager.clearToken()
-                                    NotificationStorage.setCurrentUser(null)
-                                    currentScreen = AppScreen.AUTH
-                                },
+            AppScreen.MBBS_DOCTOR_DASHBOARD -> {
+                MbbsDoctorDashboardScreen(
+                    userEmail = loggedInUserEmail,
+                    onLogout = {
+                        TokenManager.clearToken()
+                        NotificationStorage.setCurrentUser(null)
+                        currentScreen = AppScreen.AUTH
+                    },
                                 onNavigateToNotifications = {
                                     currentScreen = AppScreen.NOTIFICATIONS
                                 },
@@ -794,18 +844,21 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        AppScreen.TELECONSULT -> {
-                            TeleconsultScreen(
-                                sessionId = selectedTeleconsultSessionId ?: "",
-                                patientEmail = loggedInUserEmail,
-                                onHangUp = {
-                                    selectedTeleconsultSessionId = null
-                                    currentScreen = if (loggedInUserRole == "MBBS_DOCTOR")
-                                        AppScreen.MBBS_DOCTOR_DASHBOARD
-                                    else if (loggedInUserRole == "CAREGIVER")
-                                        AppScreen.CAREGIVER_DASHBOARD
-                                    else
-                                        AppScreen.DASHBOARD
+                        AppScreen.VIDEO_CALL -> {
+                            VideoCallScreen(
+                                appId = videoCallAppId,
+                                channelName = videoCallChannelName,
+                                token = videoCallToken,
+                                uid = videoCallUid,
+                                onEndCall = {
+                                    val sid = videoCallSessionId
+                                    if (sid != null) {
+                                        CallSignalingManager.endVideoCall(sid)
+                                    }
+                                    videoCallSessionId = null
+                                    videoCallChannelName = ""
+                                    videoCallToken = ""
+                                    currentScreen = homeScreen
                                 },
                             )
                         }
@@ -818,34 +871,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    // Incoming teleconsult overlay (slides from top)
-                    IncomingCallOverlay(
-                        callInfo = incomingCall,
-                        onAccept = { info ->
-                            incomingCall = null
-                            selectedTeleconsultSessionId = info.sessionId
-                            currentScreen = AppScreen.TELECONSULT
-                            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
-                                try {
-                                    RetrofitClient.apiService.updateTeleconsultSessionStatus(
-                                        info.sessionId,
-                                        mapOf("status" to "ACTIVE"),
-                                    )
-                                } catch (_: Exception) { }
-                            }
-                        },
-                        onDecline = { info ->
-                            incomingCall = null
-                            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
-                                try {
-                                    RetrofitClient.apiService.updateTeleconsultSessionStatus(
-                                        info.sessionId,
-                                        mapOf("status" to "CANCELLED"),
-                                    )
-                                } catch (_: Exception) { }
-                            }
-                        },
-                    )
+                    }
                 }
             }
         }
@@ -919,5 +945,18 @@ class MainActivity : ComponentActivity() {
                 Log.e("MainActivity", "Firebase token retrieval failed: ${task.exception?.message}")
             }
         }
+    }
+
+    private fun extractSubFromJwt(token: String): String? {
+        return try {
+            val parts = token.split(".")
+            if (parts.size == 3) {
+                val payload = String(
+                    android.util.Base64.decode(parts[1], android.util.Base64.URL_SAFE),
+                    Charsets.UTF_8,
+                )
+                org.json.JSONObject(payload).optString("sub").ifBlank { null }
+            } else null
+        } catch (e: Exception) { null }
     }
 }

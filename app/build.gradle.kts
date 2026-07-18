@@ -67,4 +67,5 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.osmdroid:osmdroid-android:6.1.18")
     implementation("com.stripe:stripe-android:20.48.1")
+    implementation("io.agora.rtc:full-rtc-basic:4.6.3")
 }
