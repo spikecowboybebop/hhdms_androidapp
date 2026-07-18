@@ -584,7 +584,8 @@ private fun PatientDocumentsTab(documents: List<PatientDocument>) {
                         Spacer(Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(doc.file_name ?: "", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = TitleBlack)
-                            Text("${doc.file_type ?: ""}  ${if (doc.file_size != null) "${doc.file_size / 1024}KB" else ""}", fontSize = 11.sp, color = CoolGray)
+                            val fileSize = doc.file_size
+                            Text("${doc.file_type ?: ""}  ${if (fileSize != null) "${fileSize / 1024}KB" else ""}", fontSize = 11.sp, color = CoolGray)
                         }
                     }
                 }

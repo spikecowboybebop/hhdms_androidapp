@@ -1,35 +1,57 @@
-# HHDMSPatientApp — Agent Guide
+# HHDMS Android App — Agent Guide
 
 ## Project
 
-Single-module Android app (Jetpack Compose + Material3). Connects to a NestJS backend on the local network for auth and WebRTC voice calls.
+Multi-module Android project (Jetpack Compose + Material3). Three modules share a common `:core` library. Each module connects to a NestJS backend on the local network for auth and WebRTC voice calls.
+
+## Modules
+
+| Module | Type | Package | Purpose |
+|---|---|---|---|
+| `:core` | Android Library | `com.example.hhdmspatientapp` | Shared code: Theme, NetworkService, TokenManager, FCM, storage |
+| `:app` | Application | `com.example.hhdmspatientapp` | Patient app (dashboard, caregiver, MBBS doctor, nurse screens) |
+| `:nurse` | Application | `com.example.hhdmspatientapp.nurse` | Standalone nurse app (nurse-only auth + nurse screens) |
 
 ## Quick start
 
 ```bash
-./gradlew assembleDebug          # build
-./gradlew installDebug           # build + install on connected device
-./gradlew test                   # unit tests (JUnit4)
-./gradlew connectedAndroidTest   # instrumented tests (needs device/emulator)
+./gradlew :app:assembleDebug          # build patient app
+./gradlew :nurse:assembleDebug        # build nurse app
+./gradlew :core:assembleDebug         # build shared library
+./gradlew assembleDebug               # build all modules
 ```
 
 ## Architecture
 
-- **Entrypoint**: `MainActivity.kt` — manages a two-screen state machine (`AppScreen.AUTH` / `AppScreen.DASHBOARD`)
-- **Auth**: `AuthScreen.kt` — login/signup via Retrofit to `auth/login` and `auth/mobile_signup`. Per-field validation, loading state on submit, professional error messages, BD phone prefix (`+880`).
+### Core module (`:core`)
+- **Theme**: `ui/theme/` — custom medical palette (`TechTeal`, `ClinicalNavy` etc.), `HhdmsTheme` + legacy `HHDMSPatientAppTheme` alias
+- **Network**: `NetworkService.kt` — Retrofit client (`RetrofitClient`), `AuthApiService` interface, all data models
+- **Auth**: `TokenManager.kt` — JWT token storage
+- **Storage**: `NotificationStorage.kt`, `FcmTokenStorage.kt`, `VisitStorage.kt`
+- **FCM**: `HhdmsFirebaseMessagingService.kt` — base FCM service (used by `:app`)
+
+### Patient app (`:app`)
+- **Entrypoint**: `MainActivity.kt` — state machine (`AppScreen.AUTH` / `AppScreen.DASHBOARD` + 30+ screens)
+- **Auth**: `AuthScreen.kt` — login/signup (`role_name: "MOBILE_USER"`)
 - **Dashboard**: `DashboardScreen.kt` — triggers WebRTC calls via `CallSignalingManager`
-- **Network**: `NetworkService.kt` — Retrofit client, `AuthApiService` interface
-- **Signaling**: `CallSignalingManager.kt` — Socket.IO + WebRTC for peer-to-peer voice
-- **Theme**: `ui/theme/` — custom medical palette (`MedicalTeal`, `DeepCharcoal` etc.), dynamic color disabled
+- **Signaling**: `CallSignalingManager.kt` — Socket.IO + WebRTC
+- Nurse screens also live here (duplicated from `:nurse` for backward compat)
+
+### Nurse app (`:nurse`)
+- **Entrypoint**: `NurseMainActivity.kt` — state machine (`NurseScreen.AUTH` / `NurseScreen.DASHBOARD` + 10 nurse screens)
+- **Auth**: `NurseAuthScreen.kt` — login/signup with `role_name: "NURSE"` hardcoded
+- **FCM**: `NurseFirebaseMessagingService.kt` — nurse-specific FCM handling
+- **Nurse screens**: `NurseDashboardScreen.kt`, `NurseVitalsScreen.kt`, `NurseMedicationScreen.kt`, etc.
 
 ## Critical conventions
 
-- **Server URL is hardcoded** to `http://192.168.0.109:3001/` in both `NetworkService.kt:61` and `CallSignalingManager.kt:14`. Change before testing on a different network.
-- **Cleartext HTTP** is allowed (`AndroidManifest.xml:12` `usesCleartextTraffic="true"`) — required for local LAN.
+- **Server URL is hardcoded** to `http://192.168.0.148:4000` in `NetworkService.kt:1053` (`RetrofitClient.BASE_URL`). Change before testing on a different network.
+- **Cleartext HTTP** is allowed (`AndroidManifest.xml` `usesCleartextTraffic="true"`) — required for local LAN.
 - **Release build has R8/proguard disabled** (`optimization.enable = false`). Enable before shipping.
-- **Configuration cache** is on (`gradle.properties:17`). Use `--no-configuration-cache` if stale cache causes issues.
+- **Configuration cache** is on (`gradle.properties`). Use `--no-configuration-cache` if stale cache causes issues.
 - **Min SDK 24, target 36, Java 11** source compatibility.
-- Dynamic color is **off by default** (`Theme.kt:31` `dynamicColor = false`).
+- Dynamic color is **off by default** (`Theme.kt` `dynamicColor = false`).
+- **Smart cast warning**: Data classes in `:core` can't be smart-cast from `:app`/`:nurse`. Use local `val` assignments before null checks.
 
 ## Socket.IO event contract (with `apps/api/src/gateway/call.gateway.ts`)
 
@@ -41,13 +63,11 @@ Single-module Android app (Jetpack Compose + Material3). Connects to a NestJS ba
 | Android → Server | `end-call` | `{ targetSocketId }` |
 | Server → Android | `call-ended` | `{ reason }` |
 
-The web counterpart mirrors this: web emits `end-call` with `{ targetSocketId: patientSocketId }` and listens for `call-ended` to clean up. The `activeCalls` map on the server pairs patient ↔ agent socket IDs for routing.
-
 ## Dependencies
 
 - Retrofit 2.11.0 + Gson (REST)
-- Socket.IO client 2.1.1 (signaling)
-- Stream WebRTC Android 1.3.10 (WebRTC)
+- Socket.IO client 2.1.1 (signaling — `:app` only)
+- Stream WebRTC Android 1.3.10 (WebRTC — `:app` only)
 - Material Icons Extended (extra icons)
 - AGP 9.2.1 / Kotlin 2.2.10 / Compose BOM 2026.02.01
 

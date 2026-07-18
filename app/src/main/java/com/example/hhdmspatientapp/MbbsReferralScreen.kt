@@ -225,8 +225,9 @@ fun MbbsReferralScreen(
                                     }
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(ref.referral_reason ?: "", fontSize = 13.sp, color = TitleBlack)
-                                    if (!ref.clinical_summary.isNullOrBlank()) {
-                                        Text(ref.clinical_summary, fontSize = 12.sp, color = CoolGray)
+                                    val clinicalSummary = ref.clinical_summary
+                                    if (!clinicalSummary.isNullOrBlank()) {
+                                        Text(clinicalSummary, fontSize = 12.sp, color = CoolGray)
                                     }
                                     Text("Created: ${ref.created_at?.take(10) ?: "—"}", fontSize = 11.sp, color = CoolGray)
                                 }

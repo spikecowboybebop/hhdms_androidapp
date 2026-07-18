@@ -335,9 +335,10 @@ private fun CaregiverActivityTab(activities: List<ActivityLog>) {
                             Spacer(modifier = Modifier.weight(1f))
                             Text(log.created_at?.take(10) ?: "", fontSize = 11.sp, color = CoolGray)
                         }
-                        if (!log.notes.isNullOrBlank()) {
+                        val notes = log.notes
+                        if (!notes.isNullOrBlank()) {
                             Spacer(modifier = Modifier.height(6.dp))
-                            Text(log.notes, fontSize = 13.sp, color = TitleBlack)
+                            Text(notes, fontSize = 13.sp, color = TitleBlack)
                         }
                     }
                 }

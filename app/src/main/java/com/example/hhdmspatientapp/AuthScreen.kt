@@ -37,6 +37,8 @@ import com.example.hhdmspatientapp.ui.theme.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import android.util.Base64
+import org.json.JSONObject
 
 enum class ScreenState {
     LOGIN, SIGN_UP
@@ -524,11 +526,14 @@ fun AuthScreen(onAuthSuccess: (email: String, role: String) -> Unit) {
                     withContext(Dispatchers.Main) {
                         isLoading = false
                         Log.d("HHDMS_NET", "Registration successful: ${response.patientId}")
-                        if (response.access_token != null) {
-                            TokenManager.saveToken(response.access_token)
+                        val accessToken = response.access_token
+                        if (accessToken != null) {
+                            TokenManager.saveToken(accessToken)
                         }
                         HhdmsFirebaseMessagingService.registerCurrentToken()
-                        onAuthSuccess(emailAddress, "MOBILE_USER")
+                        val actualRole = extractRoleFromToken(accessToken) ?: "MOBILE_USER"
+                        Log.d("HHDMS_NET", "Signup role from JWT: $actualRole")
+                        onAuthSuccess(emailAddress, actualRole)
                     }
                 } catch (e: Exception) {
                     withContext(Dispatchers.Main) {
@@ -760,4 +765,20 @@ private fun parseServerError(errorBody: String?): String {
     } catch (_: Exception) {
         errorBody
     }
+}
+
+private fun decodeJwtPayload(token: String): JSONObject? {
+    return try {
+        val parts = token.split(".")
+        if (parts.size < 2) return null
+        val payload = String(Base64.decode(parts[1], Base64.URL_SAFE), Charsets.UTF_8)
+        JSONObject(payload)
+    } catch (_: Exception) {
+        null
+    }
+}
+
+private fun extractRoleFromToken(token: String?): String? {
+    if (token == null) return null
+    return decodeJwtPayload(token)?.optString("role")
 }

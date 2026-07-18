@@ -2,11 +2,6 @@ package com.example.hhdmspatientapp.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// ============================================================
-// Web-matching palette — Aastha Tele-HealthCare brand
-// Matches apps/web globals.css tokens exactly.
-// ============================================================
-
 val TechTeal = Color(0xFF00D4B2)
 val ClinicalNavy = Color(0xFF0A2540)
 val SlateGray = Color(0xFF2D3A4A)
@@ -20,10 +15,6 @@ val IconMuted = Color(0xFFA0AEC0)
 val FieldBg = Color(0xFFF7FAFC)
 val ErrorRed = Color(0xFFE53E3E)
 val AlertAmber = Color(0xFFFF9900)
-
-// ============================================================
-// Legacy aliases — kept for DashboardScreen compatibility
-// ============================================================
 
 val MedicalTeal = TechTeal
 val DeepCharcoal = ClinicalNavy

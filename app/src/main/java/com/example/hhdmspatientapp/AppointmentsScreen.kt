@@ -225,7 +225,8 @@ private fun AppointmentCard(session: SessionSummary, onClick: () -> Unit) {
                             fontSize = 12.sp,
                             color = CoolGray,
                         )
-                        if (!firstTicket.scheduled_time_slot.isNullOrBlank()) {
+                        val timeSlot = firstTicket.scheduled_time_slot
+                        if (!timeSlot.isNullOrBlank()) {
                             Spacer(modifier = Modifier.width(8.dp))
                             Icon(
                                 Icons.Default.Schedule,
@@ -235,7 +236,7 @@ private fun AppointmentCard(session: SessionSummary, onClick: () -> Unit) {
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = firstTicket.scheduled_time_slot,
+                                text = timeSlot,
                                 fontSize = 12.sp,
                                 color = CoolGray,
                             )

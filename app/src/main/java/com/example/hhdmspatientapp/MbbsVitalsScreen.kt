@@ -243,9 +243,10 @@ fun MbbsVitalsScreen(
                                         VitalsChip("SpO2", "${vitals.spo2_pct ?: "—"}%")
                                         VitalsChip("Temp", "${vitals.temperature_c ?: "—"}")
                                     }
-                                    if (!vitals.notes.isNullOrBlank()) {
+                                    val notes = vitals.notes
+                                    if (!notes.isNullOrBlank()) {
                                         Spacer(modifier = Modifier.height(6.dp))
-                                        Text(vitals.notes, fontSize = 12.sp, color = CoolGray)
+                                        Text(notes, fontSize = 12.sp, color = CoolGray)
                                     }
                                 }
                             }

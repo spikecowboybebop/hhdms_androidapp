@@ -24,3 +24,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "HHDMSPatientApp"
 include(":app")
+include(":core")
+include(":nurse")

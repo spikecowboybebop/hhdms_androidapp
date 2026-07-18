@@ -263,10 +263,11 @@ fun DoctorPatientHeaderCard(session: BookingSessionResponse) {
                 }
             }
 
-            if (session.created_at != null) {
+            val createdAt = session.created_at
+            if (createdAt != null) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Created: ${session.created_at.take(10)}",
+                    text = "Created: ${createdAt.take(10)}",
                     fontSize = 12.sp,
                     color = CoolGray.copy(alpha = 0.7f),
                 )
@@ -337,7 +338,8 @@ fun DoctorTicketCard(ticket: Ticket) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                if (!ticket.scheduled_date.isNullOrBlank()) {
+                val scheduledDate = ticket.scheduled_date
+                if (!scheduledDate.isNullOrBlank()) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             Icons.Default.CalendarMonth,
@@ -347,13 +349,14 @@ fun DoctorTicketCard(ticket: Ticket) {
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = ticket.scheduled_date,
+                            text = scheduledDate,
                             fontSize = 12.sp,
                             color = CoolGray,
                         )
                     }
                 }
-                if (!ticket.scheduled_time_slot.isNullOrBlank()) {
+                val scheduledTimeSlot = ticket.scheduled_time_slot
+                if (!scheduledTimeSlot.isNullOrBlank()) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             Icons.Default.AccessTime,
@@ -363,7 +366,7 @@ fun DoctorTicketCard(ticket: Ticket) {
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = ticket.scheduled_time_slot,
+                            text = scheduledTimeSlot,
                             fontSize = 12.sp,
                             color = CoolGray,
                         )
@@ -371,7 +374,8 @@ fun DoctorTicketCard(ticket: Ticket) {
                 }
             }
 
-            if (ticket.provider != null) {
+            val provider = ticket.provider
+            if (provider != null) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
@@ -383,16 +387,17 @@ fun DoctorTicketCard(ticket: Ticket) {
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = listOfNotNull(
-                            ticket.provider.first_name_en,
-                            ticket.provider.last_name_en,
+                            provider.first_name_en,
+                            provider.last_name_en,
                         ).filter { it.isNotBlank() }.joinToString(" "),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
                         color = TitleBlack,
                     )
-                    if (!ticket.provider.specialization.isNullOrBlank()) {
+                    val specialization = provider.specialization
+                    if (!specialization.isNullOrBlank()) {
                         Text(
-                            text = " (${ticket.provider.specialization})",
+                            text = " ($specialization)",
                             fontSize = 12.sp,
                             color = CoolGray,
                         )

@@ -44,6 +44,10 @@ enum class AppScreen {
     CAREGIVER_DASHBOARD, CAREGIVER_PATIENT_LIST, CAREGIVER_PATIENT_DETAIL,
     CAREGIVER_ACTIVITY_LOG, CAREGIVER_CONDITION_REPORT, CAREGIVER_CHECK_IN_OUT,
     TELECONSULT, CHAT, PATIENT_INFO,
+    NURSE_DASHBOARD, NURSE_SCHEDULE, NURSE_PATIENT_LIST,
+    NURSE_VITALS, NURSE_MEDICATION, NURSE_IV_FLUID, NURSE_WOUND_CARE,
+    NURSE_CARE_REPORT, NURSE_HANDOVER, NURSE_CONSULTATION,
+    NURSE_SUPPLY_TRACKING, NURSE_PEDIATRIC_CARE,
 }
 
 class MainActivity : ComponentActivity() {
@@ -263,7 +267,7 @@ class MainActivity : ComponentActivity() {
                     }
 
                     LaunchedEffect(currentScreen) {
-                        if (currentScreen == AppScreen.DASHBOARD || currentScreen == AppScreen.MBBS_DOCTOR_DASHBOARD || currentScreen == AppScreen.CAREGIVER_DASHBOARD || currentScreen == AppScreen.CAREGIVER_PATIENT_LIST || currentScreen == AppScreen.CAREGIVER_CHECK_IN_OUT) {
+                        if (currentScreen == AppScreen.DASHBOARD || currentScreen == AppScreen.MBBS_DOCTOR_DASHBOARD || currentScreen == AppScreen.CAREGIVER_DASHBOARD || currentScreen == AppScreen.CAREGIVER_PATIENT_LIST || currentScreen == AppScreen.CAREGIVER_CHECK_IN_OUT || currentScreen == AppScreen.NURSE_DASHBOARD) {
                             sessionLoadKey++
                         }
                     }
@@ -332,15 +336,15 @@ class MainActivity : ComponentActivity() {
                     }
 
                     if (!pendingSessionId.isNullOrBlank() &&
-                        (currentScreen == AppScreen.DASHBOARD || currentScreen == AppScreen.MBBS_DOCTOR_DASHBOARD || currentScreen == AppScreen.CAREGIVER_DASHBOARD)
+                        (currentScreen == AppScreen.DASHBOARD || currentScreen == AppScreen.MBBS_DOCTOR_DASHBOARD || currentScreen == AppScreen.CAREGIVER_DASHBOARD || currentScreen == AppScreen.NURSE_DASHBOARD)
                     ) {
                         bookingOrigin = homeScreen
-                        selectedSessionId = pendingSessionId
-                        pendingSessionId = null
-                        currentScreen = if (loggedInUserRole == "MBBS_DOCTOR" || loggedInUserRole == "CAREGIVER")
-                            AppScreen.MBBS_BOOKING_DETAIL
-                        else
-                            AppScreen.BOOKING_DETAIL
+                            selectedSessionId = pendingSessionId
+                            pendingSessionId = null
+                            currentScreen = if (loggedInUserRole == "MBBS_DOCTOR" || loggedInUserRole == "CAREGIVER" || loggedInUserRole == "NURSE")
+                                AppScreen.MBBS_BOOKING_DETAIL
+                            else
+                                AppScreen.BOOKING_DETAIL
                     }
 
                     BackHandler(enabled = true) {
@@ -389,11 +393,12 @@ class MainActivity : ComponentActivity() {
                                     homeScreen = when (role) {
                                         "MBBS_DOCTOR" -> AppScreen.MBBS_DOCTOR_DASHBOARD
                                         "CAREGIVER" -> AppScreen.CAREGIVER_DASHBOARD
+                                        "NURSE" -> AppScreen.NURSE_DASHBOARD
                                         else -> AppScreen.DASHBOARD
                                     }
                                     bookingOrigin = homeScreen
                                     selectedSessionId = pendingId
-                                    currentScreen = if (role == "MBBS_DOCTOR" || role == "CAREGIVER")
+                                    currentScreen = if (role == "MBBS_DOCTOR" || role == "CAREGIVER" || role == "NURSE")
                                         AppScreen.MBBS_BOOKING_DETAIL
                                     else
                                         AppScreen.BOOKING_DETAIL
@@ -404,6 +409,9 @@ class MainActivity : ComponentActivity() {
                                 } else if (role == "CAREGIVER") {
                                     homeScreen = AppScreen.CAREGIVER_DASHBOARD
                                     currentScreen = AppScreen.CAREGIVER_DASHBOARD
+                                } else if (role == "NURSE") {
+                                    homeScreen = AppScreen.NURSE_DASHBOARD
+                                    currentScreen = AppScreen.NURSE_DASHBOARD
                                 } else {
                                     homeScreen = AppScreen.DASHBOARD
                                     currentScreen = AppScreen.DASHBOARD
@@ -495,7 +503,7 @@ class MainActivity : ComponentActivity() {
                                     if (!sessionId.isNullOrBlank()) {
                                         bookingOrigin = AppScreen.NOTIFICATIONS
                                         selectedSessionId = sessionId
-                                        currentScreen = if (loggedInUserRole == "MBBS_DOCTOR")
+                                        currentScreen = if (loggedInUserRole == "MBBS_DOCTOR" || loggedInUserRole == "NURSE")
                                             AppScreen.MBBS_BOOKING_DETAIL
                                         else
                                             AppScreen.BOOKING_DETAIL
@@ -676,6 +684,105 @@ class MainActivity : ComponentActivity() {
                         AppScreen.CAREGIVER_CHECK_IN_OUT -> {
                             CaregiverCheckInOutScreen(
                                 onBack = { currentScreen = AppScreen.CAREGIVER_DASHBOARD },
+                            )
+                        }
+
+                        AppScreen.NURSE_DASHBOARD -> {
+                            NurseDashboardScreen(
+                                userEmail = loggedInUserEmail,
+                                onLogout = {
+                                    TokenManager.clearToken()
+                                    NotificationStorage.setCurrentUser(null)
+                                    currentScreen = AppScreen.AUTH
+                                },
+                                onNavigateToNotifications = { currentScreen = AppScreen.NOTIFICATIONS },
+                                onNavigateToSchedule = { currentScreen = AppScreen.NURSE_SCHEDULE },
+                                onNavigateToPatientList = { currentScreen = AppScreen.NURSE_PATIENT_LIST },
+                                onNavigateToVitals = { currentScreen = AppScreen.NURSE_VITALS },
+                                onNavigateToMedication = { currentScreen = AppScreen.NURSE_MEDICATION },
+                                onNavigateToIVFluid = { currentScreen = AppScreen.NURSE_IV_FLUID },
+                                onNavigateToWoundCare = { currentScreen = AppScreen.NURSE_WOUND_CARE },
+                                onNavigateToCareReport = { currentScreen = AppScreen.NURSE_CARE_REPORT },
+                                onNavigateToHandover = { currentScreen = AppScreen.NURSE_HANDOVER },
+                                onNavigateToConsultation = { currentScreen = AppScreen.NURSE_CONSULTATION },
+                                onNavigateToSupplyTracking = { currentScreen = AppScreen.NURSE_SUPPLY_TRACKING },
+                                onNavigateToPediatricCare = { currentScreen = AppScreen.NURSE_PEDIATRIC_CARE },
+                            )
+                        }
+
+                        AppScreen.NURSE_SCHEDULE -> {
+                            NursePatientScheduleScreen(
+                                onBack = { currentScreen = AppScreen.NURSE_DASHBOARD },
+                                onPatientClick = { id, name ->
+                                    selectedPatientId = id
+                                    selectedPatientName = name
+                                    currentScreen = AppScreen.NURSE_VITALS
+                                },
+                            )
+                        }
+
+                        AppScreen.NURSE_PATIENT_LIST -> {
+                            NursePatientListScreen(
+                                onBack = { currentScreen = AppScreen.NURSE_DASHBOARD },
+                                onPatientClick = { id, name ->
+                                    selectedPatientId = id
+                                    selectedPatientName = name
+                                    currentScreen = AppScreen.NURSE_VITALS
+                                },
+                            )
+                        }
+
+                        AppScreen.NURSE_VITALS -> {
+                            NurseVitalsScreen(
+                                onBack = { currentScreen = AppScreen.NURSE_DASHBOARD },
+                            )
+                        }
+
+                        AppScreen.NURSE_MEDICATION -> {
+                            NurseMedicationScreen(
+                                onBack = { currentScreen = AppScreen.NURSE_DASHBOARD },
+                            )
+                        }
+
+                        AppScreen.NURSE_IV_FLUID -> {
+                            NurseIVFluidScreen(
+                                onBack = { currentScreen = AppScreen.NURSE_DASHBOARD },
+                            )
+                        }
+
+                        AppScreen.NURSE_WOUND_CARE -> {
+                            NurseWoundCareScreen(
+                                onBack = { currentScreen = AppScreen.NURSE_DASHBOARD },
+                            )
+                        }
+
+                        AppScreen.NURSE_CARE_REPORT -> {
+                            NurseCareReportScreen(
+                                onBack = { currentScreen = AppScreen.NURSE_DASHBOARD },
+                            )
+                        }
+
+                        AppScreen.NURSE_HANDOVER -> {
+                            NurseHandoverScreen(
+                                onBack = { currentScreen = AppScreen.NURSE_DASHBOARD },
+                            )
+                        }
+
+                        AppScreen.NURSE_CONSULTATION -> {
+                            NurseConsultationScreen(
+                                onBack = { currentScreen = AppScreen.NURSE_DASHBOARD },
+                            )
+                        }
+
+                        AppScreen.NURSE_SUPPLY_TRACKING -> {
+                            NurseSupplyTrackingScreen(
+                                onBack = { currentScreen = AppScreen.NURSE_DASHBOARD },
+                            )
+                        }
+
+                        AppScreen.NURSE_PEDIATRIC_CARE -> {
+                            NursePediatricCareScreen(
+                                onBack = { currentScreen = AppScreen.NURSE_DASHBOARD },
                             )
                         }
 

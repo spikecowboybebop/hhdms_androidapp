@@ -27,10 +27,9 @@ private val LightColorScheme = lightColorScheme(
 )
 
 @Composable
-fun HHDMSPatientAppTheme(
+fun HhdmsTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = false, // Set to false to force our custom medical colors
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
@@ -48,3 +47,10 @@ fun HHDMSPatientAppTheme(
         content = content
     )
 }
+
+@Composable
+fun HHDMSPatientAppTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    dynamicColor: Boolean = false,
+    content: @Composable () -> Unit
+) = HhdmsTheme(darkTheme, dynamicColor, content)

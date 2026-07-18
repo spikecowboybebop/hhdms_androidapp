@@ -286,9 +286,10 @@ fun CaregiverActivityLogScreen(
                                                 Text("${it.first_name_en ?: ""} ${it.last_name_en ?: ""}", fontSize = 10.sp, color = CoolGray)
                                             }
                                         }
-                                        if (!log.notes.isNullOrBlank()) {
+                                        val notes = log.notes
+                                        if (!notes.isNullOrBlank()) {
                                             Spacer(modifier = Modifier.height(2.dp))
-                                            Text(log.notes, fontSize = 10.sp, color = CoolGray.copy(alpha = 0.7f))
+                                            Text(notes, fontSize = 10.sp, color = CoolGray.copy(alpha = 0.7f))
                                         }
                                     }
                                     Text(log.created_at?.take(16)?.replace("T", " ") ?: "", fontSize = 9.sp, color = CoolGray.copy(alpha = 0.6f))

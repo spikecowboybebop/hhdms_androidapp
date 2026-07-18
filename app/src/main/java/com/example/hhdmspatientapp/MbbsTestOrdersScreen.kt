@@ -232,10 +232,11 @@ fun MbbsTestOrdersScreen(
                                     }
                                     Text("Ordered: ${order.ordered_at?.take(10) ?: "—"}", fontSize = 11.sp, color = CoolGray)
 
-                                    if (!order.results.isNullOrEmpty()) {
+                                    val results = order.results
+                                    if (!results.isNullOrEmpty()) {
                                         Spacer(modifier = Modifier.height(8.dp))
                                         Text("Results:", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TitleBlack)
-                                        order.results.forEach { result ->
+                                        results.forEach { result ->
                                             Row(verticalAlignment = Alignment.CenterVertically) {
                                                 Text(result.result_value ?: "", fontSize = 13.sp, color = TitleBlack)
                                                 if (result.is_critical) {
