@@ -2,7 +2,7 @@
 
 ## Project
 
-Single-module Android app (Jetpack Compose + Material3). Supports three roles: **patient**, **MBBS doctor**, and **caregiver**. Connects to a NestJS backend on the local network for auth, data, payments, WebRTC voice calls, and teleconsult video calls.
+Single-module Android app (Jetpack Compose + Material3). Supports three roles: **patient**, **MBBS doctor**, and **caregiver**. Connects to a NestJS backend on the local network for auth, data, payments, Agora voice calls, and teleconsult video calls.
 
 ## Quick start
 
@@ -22,7 +22,7 @@ Single-module Android app (Jetpack Compose + Material3). Supports three roles: *
 - **Doctor screens**: MBBS dashboard, booking detail, patient assignments, patient detail, vitals/diagnosis/prescription/test orders/referral entry
 - **Caregiver screens**: Dashboard, patient list, patient detail, activity log, condition report, GPS check-in/check-out
 - **Network**: `NetworkService.kt` — Retrofit client (~45 endpoints), `AuthApiService` interface, 60+ data models
-- **Signaling**: `CallSignalingManager.kt` — Socket.IO + WebRTC for peer-to-peer voice
+- **Signaling**: `CallSignalingManager.kt` — Socket.IO signaling + Agora RTC audio for voice
 - **Teleconsult**: Socket.IO events for video call lifecycle (`register:user`, `call:ringing`, `call:ready`, `call:ended`, `call:accept`, `call:decline`, `call:terminate`)
 - **Storage**: `TokenManager`, `NotificationStorage`, `FcmTokenStorage`, `VisitStorage` — all SharedPreferences-based
 - **Firebase**: `HhdmsFirebaseMessagingService.kt` for push notifications
@@ -31,7 +31,7 @@ Single-module Android app (Jetpack Compose + Material3). Supports three roles: *
 
 ## Critical conventions
 
-- **Server URL is hardcoded** to `http://192.168.0.101:3001` in both `NetworkService.kt:708` and `CallSignalingManager.kt:14`. Change before testing on a different network.
+- **Server URL is hardcoded** to `http://192.168.0.102:3001` in `NetworkService.kt`, `CallSignalingManager.kt`, and `ChatScreen.kt`. Change before testing on a different network.
 - **Cleartext HTTP** is allowed (`AndroidManifest.xml:19` `usesCleartextTraffic="true"`) — required for local LAN.
 - **Release build has R8/proguard disabled** (`optimization.enable = false`). Enable before shipping.
 - **Configuration cache** is on (`gradle.properties:17`). Use `--no-configuration-cache` if stale cache causes issues.
@@ -39,15 +39,19 @@ Single-module Android app (Jetpack Compose + Material3). Supports three roles: *
 
 ## Socket.IO event contracts
 
-### WebRTC voice calls (with `apps/api/src/gateway/call.gateway.ts`)
+### Emergency voice calls (Agora audio, with `apps/api/src/video-call/voice-call.gateway.ts`)
+
+Media flows through the Agora SD-RTN cloud (NAT-safe); Socket.IO only carries signaling. Voice channel name: `cc-${sessionId}`, patient uid=2 (agent uid=1). Patient builds audio with Agora `RtcEngine`.
 
 | Direction | Event | Payload |
 |---|---|---|
-| Android → Server | `call-center-dial` | `{ patientEmail, sdpOffer }` |
-| Server → Android | `call-routing-connected` | `{ sdpAnswer, agentSocketId }` |
-| Android ↔ Server | `relay-ice-candidate` | `{ targetSocketId, candidate }` |
-| Android → Server | `end-call` | `{ targetSocketId }` |
-| Server → Android | `call-ended` | `{ reason }` |
+| Android → Server | `voice-call:start` | `{ patientId, patientEmail, patientName, patientPhone }` |
+| Server → Android | `voice-call:ringing` | `{ sessionId, patientId, patientEmail, patientName }` |
+| Android → Server | `voice-call:accept` | `{ sessionId }` |
+| Server → Android | `voice-call:ready` | `{ sessionId, token, appId, channelName, uid }` |
+| Android → Server | `voice-call:decline` | `{ sessionId }` |
+| Android → Server | `voice-call:end` | `{ sessionId }` |
+| Server → Android | `voice-call:end` | `{ sessionId, reason }` |
 
 ### Teleconsult video calls (WebView/Daily.co-based)
 
@@ -66,7 +70,7 @@ Single-module Android app (Jetpack Compose + Material3). Supports three roles: *
 - Retrofit 2.11.0 + Gson (REST)
 - OkHttp 4.12.0 (HTTP)
 - Socket.IO client 2.1.1 (signaling)
-- Stream WebRTC Android 1.3.10 (WebRTC)
+- Agora RTC full-rtc-basic 4.6.3 (voice call audio; local `.so`s / files committed)
 - Firebase Messaging KTX 24.1.1 (push notifications)
 - Stripe Android 20.48.1 (payments)
 - osmdroid 6.1.18 (maps / doctor tracking)

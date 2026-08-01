@@ -43,7 +43,7 @@ fun ChatScreen(
 
     val chatManager = remember {
         val token = TokenManager.getToken() ?: ""
-        ChatManager("http://192.168.1.40:3001", token)
+        ChatManager("http://192.168.0.102:3001", token)
     }
 
     DisposableEffect(conversationId) {

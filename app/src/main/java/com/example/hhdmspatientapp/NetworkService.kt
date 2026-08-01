@@ -601,6 +601,289 @@ data class PatientInfoResponse(
     val alternative_phone: String? = null,
 )
 
+// ── Nurse Module Models ──
+
+data class NurseProfileResponse(
+    val user: NurseUser,
+    val nurse_type: String? = null,
+    val specialization: String? = null,
+    val license_number: String? = null,
+)
+
+data class NurseUser(
+    @com.google.gson.annotations.SerializedName("first_name_en")
+    val firstNameEn: String? = null,
+    @com.google.gson.annotations.SerializedName("last_name_en")
+    val lastNameEn: String? = null,
+)
+
+data class NursePatient(
+    val id: String,
+    val mrn: String? = null,
+    val first_name_en: String,
+    val last_name_en: String? = null,
+    val phone_number: String? = null,
+    val date_of_birth: String? = null,
+    val sex: String? = null,
+    val blood_group: String? = null,
+    val patient_type: String? = null,
+    val address_line1: String? = null,
+    val district: String? = null,
+    val age_years: Int? = null,
+    val nurse_type: String? = null,
+)
+
+data class NurseScheduleEntry(
+    val id: String,
+    val patient_id: String,
+    val scheduled_date: String? = null,
+    val scheduled_time_slot: String? = null,
+    val service_requirements: String? = null,
+    val status: String = "PENDING",
+    val patient: NursePatient? = null,
+)
+
+data class NurseVitalSigns(
+    val id: String,
+    val patient_id: String,
+    val recorded_at: String? = null,
+    val systolic_bp: Int? = null,
+    val diastolic_bp: Int? = null,
+    val pulse_bpm: Int? = null,
+    val temperature_c: Double? = null,
+    val spo2_pct: Int? = null,
+    val respiratory_rate: Int? = null,
+    val blood_glucose: Double? = null,
+    val notes: String? = null,
+    val is_abnormal: Boolean = false,
+    val previous_vitals: NurseVitalSigns? = null,
+)
+
+data class NurseCreateVitalsRequest(
+    val patient_id: String,
+    val systolic_bp: Int? = null,
+    val diastolic_bp: Int? = null,
+    val pulse_bpm: Int? = null,
+    val temperature_c: Double? = null,
+    val spo2_pct: Int? = null,
+    val respiratory_rate: Int? = null,
+    val blood_glucose: Double? = null,
+    val notes: String? = null,
+)
+
+data class MedicationAdministration(
+    val id: String,
+    val patient_id: String,
+    val drug_name: String,
+    val dosage: String? = null,
+    val route: String? = null,
+    val administered_at: String? = null,
+    val notes: String? = null,
+    val nurse_name: String? = null,
+)
+
+data class MedicationAdministrationRecord(
+    val patient_id: String,
+    val patient_name: String? = null,
+    val visit_date: String? = null,
+    val entries: List<MedicationAdministration> = emptyList(),
+)
+
+data class NurseCreateMedicationAdminRequest(
+    val patient_id: String,
+    val drug_name: String,
+    val dosage: String? = null,
+    val route: String = "Oral",
+    val notes: String? = null,
+)
+
+data class IvFluidRecord(
+    val id: String,
+    val patient_id: String,
+    val fluid_type: String? = null,
+    val rate_ml_hr: Double? = null,
+    val volume_given_ml: Double? = null,
+    val site_condition: String? = null,
+    val started_at: String? = null,
+    val stopped_at: String? = null,
+    val hourly_balance: List<HourlyFluidBalance>? = null,
+    val status: String = "ACTIVE",
+)
+
+data class HourlyFluidBalance(
+    val hour: String? = null,
+    val intake_ml: Double? = null,
+    val output_ml: Double? = null,
+    val balance_ml: Double? = null,
+)
+
+data class NurseCreateIvFluidRequest(
+    val patient_id: String,
+    val fluid_type: String,
+    val rate_ml_hr: Double,
+    val site_condition: String? = null,
+)
+
+data class NurseUpdateIvFluidRequest(
+    val rate_ml_hr: Double? = null,
+    val volume_given_ml: Double? = null,
+    val site_condition: String? = null,
+    val status: String? = null,
+)
+
+data class WoundCareRecord(
+    val id: String,
+    val patient_id: String,
+    val wound_location: String? = null,
+    val wound_measurements: String? = null,
+    val wound_condition: String? = null,
+    val dressing_applied: String? = null,
+    val healing_progress: String? = null,
+    val photo_url: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val recorded_at: String? = null,
+    val previous_records: List<WoundCareRecord>? = null,
+)
+
+data class NurseCreateWoundCareRequest(
+    val patient_id: String,
+    val wound_location: String? = null,
+    val wound_measurements: String? = null,
+    val wound_condition: String? = null,
+    val dressing_applied: String? = null,
+    val healing_progress: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+)
+
+data class NursingCareReport(
+    val id: String,
+    val patient_id: String,
+    val visit_date: String? = null,
+    val vitals_summary: String? = null,
+    val medications_summary: String? = null,
+    val procedures_performed: String? = null,
+    val patient_response: String? = null,
+    val handover_notes: String? = null,
+    val generated_at: String? = null,
+    val pdf_url: String? = null,
+    val patient: NursePatient? = null,
+)
+
+data class ShiftHandover(
+    val id: String,
+    val shift_date: String? = null,
+    val current_status: String? = null,
+    val active_concerns: String? = null,
+    val medications_due: String? = null,
+    val physician_orders: String? = null,
+    val patient_instructions: String? = null,
+    val handed_over_by: String? = null,
+    val handed_over_to: String? = null,
+    val signed_at: String? = null,
+    val patient: NursePatient? = null,
+    val status: String = "DRAFT",
+)
+
+data class NurseCreateHandoverRequest(
+    val patient_id: String,
+    val current_status: String,
+    val active_concerns: String? = null,
+    val medications_due: String? = null,
+    val physician_orders: String? = null,
+    val patient_instructions: String? = null,
+    val handed_over_to_email: String? = null,
+)
+
+data class NurseConsultationRequest(
+    val id: String,
+    val patient_id: String,
+    val concern_summary: String? = null,
+    val current_vitals_snapshot: String? = null,
+    val urgency_level: String = "NORMAL",
+    val status: String = "PENDING",
+    val created_at: String? = null,
+    val doctor_response: String? = null,
+    val responded_at: String? = null,
+    val patient: NursePatient? = null,
+)
+
+data class NurseCreateConsultationRequest(
+    val patient_id: String,
+    val concern_summary: String,
+    val urgency_level: String = "NORMAL",
+)
+
+data class SupplyUsageRecord(
+    val id: String,
+    val patient_id: String,
+    val supply_name: String,
+    val quantity_used: Int = 1,
+    val unit: String? = null,
+    val recorded_at: String? = null,
+    val patient: NursePatient? = null,
+)
+
+data class NurseCreateSupplyUsageRequest(
+    val patient_id: String,
+    val supply_name: String,
+    val quantity_used: Int = 1,
+    val unit: String? = null,
+)
+
+data class FeedingLog(
+    val id: String,
+    val patient_id: String,
+    val feeding_type: String? = null,
+    val volume_ml: Double? = null,
+    val frequency: String? = null,
+    val recorded_at: String? = null,
+)
+
+data class GrowthRecord(
+    val id: String,
+    val patient_id: String,
+    val weight_kg: Double? = null,
+    val height_cm: Double? = null,
+    val head_circumference_cm: Double? = null,
+    val recorded_at: String? = null,
+    val percentile_weight: Double? = null,
+    val percentile_height: Double? = null,
+    val percentile_head: Double? = null,
+)
+
+data class VaccinationRecord(
+    val id: String,
+    val patient_id: String,
+    val vaccine_name: String? = null,
+    val dose_number: Int? = null,
+    val administered_date: String? = null,
+    val next_due_date: String? = null,
+    val status: String = "COMPLETED",
+)
+
+data class NurseCreateFeedingLogRequest(
+    val patient_id: String,
+    val feeding_type: String,
+    val volume_ml: Double? = null,
+    val frequency: String? = null,
+)
+
+data class NurseCreateGrowthRecordRequest(
+    val patient_id: String,
+    val weight_kg: Double? = null,
+    val height_cm: Double? = null,
+    val head_circumference_cm: Double? = null,
+)
+
+data class NurseCreateVaccinationRequest(
+    val patient_id: String,
+    val vaccine_name: String,
+    val dose_number: Int? = null,
+    val next_due_date: String? = null,
+)
+
 // =============================================================================
 // 2. RETROFIT ENDPOINT INTERFACE DEFINITION
 // =============================================================================
@@ -700,8 +983,8 @@ interface AuthApiService {
     @POST("caregiver/condition-reports")
     suspend fun createConditionReport(@Body request: CreateConditionReportRequest): Map<String, Any?>
 
-    @POST("caregiver/condition-reports/{id}/alert")
-    suspend fun sendCaregiverAlert(@Path("id") reportId: String, @Body target: Map<String, String>): Map<String, Any?>
+    @POST("caregiver/condition-reports/{id}/alert/{target}")
+    suspend fun sendCaregiverAlert(@Path("id") reportId: String, @Path("target") target: String): Map<String, Any?>
 
     // ── CG-006: GPS Check-In/Out Endpoints ──
     @POST("caregiver/check-in")
@@ -773,6 +1056,90 @@ interface AuthApiService {
     @POST("chat/{conversationId}/read")
     suspend fun markChatRead(@Path("conversationId") conversationId: String)
 
+    // ── Nurse Module Endpoints ──
+
+    @GET("nurse/profile")
+    suspend fun getNurseProfile(): NurseProfileResponse
+
+    @GET("nurse/patients")
+    suspend fun getNursePatients(): List<NursePatient>
+
+    @GET("nurse/schedule")
+    suspend fun getNurseSchedule(@retrofit2.http.Query("date") date: String?): List<NurseScheduleEntry>
+
+    @GET("nurse/patients/{id}/vitals")
+    suspend fun getNursePatientVitals(@Path("id") patientId: String): List<NurseVitalSigns>
+
+    @POST("nurse/patients/{id}/vitals")
+    suspend fun createNurseVitals(@Path("id") patientId: String, @Body request: NurseCreateVitalsRequest): Map<String, Any?>
+
+    @GET("nurse/patients/{id}/medication-admin")
+    suspend fun getMedicationAdministrations(@Path("id") patientId: String): MedicationAdministrationRecord
+
+    @POST("nurse/patients/{id}/medication-admin")
+    suspend fun createMedicationAdministration(@Path("id") patientId: String, @Body request: NurseCreateMedicationAdminRequest): Map<String, Any?>
+
+    @GET("nurse/patients/{id}/iv-fluids")
+    suspend fun getIvFluidRecords(@Path("id") patientId: String): List<IvFluidRecord>
+
+    @POST("nurse/patients/{id}/iv-fluids")
+    suspend fun createIvFluidRecord(@Path("id") patientId: String, @Body request: NurseCreateIvFluidRequest): Map<String, Any?>
+
+    @PATCH("nurse/iv-fluids/{id}")
+    suspend fun updateIvFluidRecord(@Path("id") recordId: String, @Body request: NurseUpdateIvFluidRequest): Map<String, Any?>
+
+    @GET("nurse/patients/{id}/wound-care")
+    suspend fun getWoundCareRecords(@Path("id") patientId: String): List<WoundCareRecord>
+
+    @POST("nurse/patients/{id}/wound-care")
+    suspend fun createWoundCareRecord(@Path("id") patientId: String, @Body request: NurseCreateWoundCareRequest): Map<String, Any?>
+
+    @Multipart
+    @POST("nurse/patients/{id}/wound-care/photo")
+    suspend fun uploadWoundPhoto(@Path("id") patientId: String, @Part photo: MultipartBody.Part, @Part("wound_id") woundId: okhttp3.RequestBody?): PatientDocument
+
+    @GET("nurse/patients/{id}/care-report")
+    suspend fun getNursingCareReport(@Path("id") patientId: String): NursingCareReport?
+
+    @POST("nurse/patients/{id}/care-report")
+    suspend fun generateNursingCareReport(@Path("id") patientId: String): NursingCareReport
+
+    @GET("nurse/handovers")
+    suspend fun getNurseHandovers(@retrofit2.http.Query("patient_id") patientId: String?): List<ShiftHandover>
+
+    @POST("nurse/handovers")
+    suspend fun createHandover(@Body request: NurseCreateHandoverRequest): Map<String, Any?>
+
+    @GET("nurse/consultation-requests")
+    suspend fun getNurseConsultationRequests(@retrofit2.http.Query("patient_id") patientId: String?): List<NurseConsultationRequest>
+
+    @POST("nurse/consultation-requests")
+    suspend fun createConsultationRequest(@Body request: NurseCreateConsultationRequest): Map<String, Any?>
+
+    @GET("nurse/supply-usage")
+    suspend fun getSupplyUsageRecords(@retrofit2.http.Query("patient_id") patientId: String?): List<SupplyUsageRecord>
+
+    @POST("nurse/supply-usage")
+    suspend fun createSupplyUsage(@Body request: NurseCreateSupplyUsageRequest): Map<String, Any?>
+
+    @GET("nurse/patients/{id}/feeding-logs")
+    suspend fun getFeedingLogs(@Path("id") patientId: String): List<FeedingLog>
+
+    @POST("nurse/patients/{id}/feeding-logs")
+    suspend fun createFeedingLog(@Path("id") patientId: String, @Body request: NurseCreateFeedingLogRequest): Map<String, Any?>
+
+    @GET("nurse/patients/{id}/growth-records")
+    suspend fun getGrowthRecords(@Path("id") patientId: String): List<GrowthRecord>
+
+    @POST("nurse/patients/{id}/growth-records")
+    suspend fun createGrowthRecord(@Path("id") patientId: String, @Body request: NurseCreateGrowthRecordRequest): Map<String, Any?>
+
+    @GET("nurse/patients/{id}/vaccinations")
+    suspend fun getVaccinationRecords(@Path("id") patientId: String): List<VaccinationRecord>
+
+    @POST("nurse/patients/{id}/vaccinations")
+    suspend fun createVaccinationRecord(@Path("id") patientId: String, @Body request: NurseCreateVaccinationRequest): Map<String, Any?>
+
 }
 
 // =============================================================================
@@ -780,7 +1147,7 @@ interface AuthApiService {
 // =============================================================================
 object RetrofitClient {
     // 10.0.2.2 automatically bridges out to your host development computer's localhost:3000
-    private const val BASE_URL = "http://192.168.0.101:3001"
+    private const val BASE_URL = "http://192.168.0.102:3001"
 
     private val okHttpClient = okhttp3.OkHttpClient.Builder()
         .addInterceptor { chain ->

@@ -62,7 +62,6 @@ dependencies {
     implementation("io.socket:socket.io-client:2.1.1") {
         exclude(group = "org.json", module = "json")
     }
-    implementation("io.getstream:stream-webrtc-android:1.3.10")
     implementation("com.google.firebase:firebase-messaging-ktx:24.1.1")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.osmdroid:osmdroid-android:6.1.18")

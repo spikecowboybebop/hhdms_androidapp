@@ -153,6 +153,8 @@ data class MbbsPatientSummary(
     val current_medications: String? = null,
     val past_medical_history: String? = null,
     val family_history: String? = null,
+    val appointment_activity: String? = null,
+    val patient_consent: String? = null,
 )
 
 data class MbbsPatientProfileResponse(
@@ -821,6 +823,84 @@ data class PatientInfoResponse(
     val alternative_phone: String? = null,
 )
 
+data class PatientReport(
+    val id: String,
+    val report_type: String,
+    val file_url: String? = null,
+    val file_name: String? = null,
+    val file_size: Int? = null,
+    val generated_at: String? = null,
+)
+
+data class CreatePaymentRequest(
+    val booking_session_id: String,
+)
+
+data class PaymentIntentResponse(
+    val paymentId: String,
+    val clientSecret: String,
+    val publishableKey: String,
+    val amount: Double,
+    val serviceType: String,
+)
+
+data class ConfirmPaymentRequest(
+    val payment_id: String,
+)
+
+data class PaymentStatusResponse(
+    val paid: Boolean,
+    val paymentId: String? = null,
+)
+
+data class ChatConversation(
+    val id: String,
+    val assignment_id: String,
+    val doctor_id: String,
+    val patient_id: String,
+    val created_at: String? = null,
+    val updated_at: String? = null,
+    val assignment: ChatAssignment? = null,
+    val doctor: ChatUser? = null,
+    val patient: ChatPatient? = null,
+    val messages: List<ChatMessage> = emptyList(),
+)
+
+data class ChatAssignment(
+    val appointment_activity: String? = null,
+    val patient_consent: String? = null,
+)
+
+data class ChatUser(
+    val id: String,
+    val firstNameEn: String? = null,
+    val lastNameEn: String? = null,
+)
+
+data class ChatPatient(
+    val id: String,
+    val first_name_en: String? = null,
+    val last_name_en: String? = null,
+)
+
+data class ChatMessage(
+    val id: String,
+    val conversation_id: String,
+    val sender_id: String,
+    val content: String,
+    val read: Boolean = false,
+    val created_at: String? = null,
+)
+
+data class SendMessageRequest(
+    val content: String,
+)
+
+data class UnreadCount(
+    val conversationId: String,
+    val unreadCount: Int,
+)
+
 // =============================================================================
 // 2. RETROFIT ENDPOINT INTERFACE DEFINITION
 // =============================================================================
@@ -920,8 +1000,8 @@ interface AuthApiService {
     @POST("caregiver/condition-reports")
     suspend fun createConditionReport(@Body request: CreateConditionReportRequest): Map<String, Any?>
 
-    @POST("caregiver/condition-reports/{id}/alert")
-    suspend fun sendCaregiverAlert(@Path("id") reportId: String, @Body target: Map<String, String>): Map<String, Any?>
+    @POST("caregiver/condition-reports/{id}/alert/{target}")
+    suspend fun sendCaregiverAlert(@Path("id") reportId: String, @Path("target") target: String): Map<String, Any?>
 
     // ── CG-006: GPS Check-In/Out Endpoints ──
     @POST("caregiver/check-in")
@@ -954,6 +1034,45 @@ interface AuthApiService {
     @Multipart
     @POST("patients/self/documents")
     suspend fun uploadPatientDocument(@Part file: MultipartBody.Part): PatientDocument
+
+    // ── Patient Reports ──
+    @GET("patients/self/reports")
+    suspend fun getSelfReports(): List<PatientReport>
+
+    // ── Payments ──
+    @POST("payments/create-intent")
+    suspend fun createPaymentIntent(@Body request: CreatePaymentRequest): PaymentIntentResponse
+
+    @POST("payments/confirm")
+    suspend fun confirmPayment(@Body request: ConfirmPaymentRequest)
+
+    @GET("payments/status/{sessionId}")
+    suspend fun getPaymentStatus(@Path("sessionId") sessionId: String): PaymentStatusResponse
+
+    // ── Chat ──
+    @GET("chat/conversations")
+    suspend fun getChatConversations(): List<ChatConversation>
+
+    @POST("chat/start")
+    suspend fun startChat(): ChatConversation
+
+    @GET("chat/unread")
+    suspend fun getChatUnreadCounts(): List<UnreadCount>
+
+    @POST("chat/conversation/{assignmentId}")
+    suspend fun getOrCreateConversation(@Path("assignmentId") assignmentId: String): ChatConversation
+
+    @GET("chat/{conversationId}/messages")
+    suspend fun getChatMessages(@Path("conversationId") conversationId: String): List<ChatMessage>
+
+    @POST("chat/{conversationId}/messages")
+    suspend fun sendChatMessage(
+        @Path("conversationId") conversationId: String,
+        @Body request: SendMessageRequest,
+    ): ChatMessage
+
+    @POST("chat/{conversationId}/read")
+    suspend fun markChatRead(@Path("conversationId") conversationId: String)
 
     // ── Nurse Module Endpoints ──
 
@@ -1059,7 +1178,7 @@ interface AuthApiService {
 // =============================================================================
 object RetrofitClient {
     // 10.0.2.2 automatically bridges out to your host development computer's localhost:3000
-    private const val BASE_URL = "http://192.168.0.148:4000"
+    private const val BASE_URL = "http://192.168.0.102:3001"
 
     private val okHttpClient = okhttp3.OkHttpClient.Builder()
         .addInterceptor { chain ->

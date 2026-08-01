@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -44,7 +45,7 @@ enum class AppScreen {
     MBBS_VITALS, MBBS_DIAGNOSIS, MBBS_PRESCRIPTION, MBBS_TEST_ORDERS, MBBS_REFERRAL,
     CAREGIVER_DASHBOARD, CAREGIVER_PATIENT_LIST, CAREGIVER_PATIENT_DETAIL,
     CAREGIVER_ACTIVITY_LOG, CAREGIVER_CONDITION_REPORT, CAREGIVER_CHECK_IN_OUT,
-    TELECONSULT, CHAT, PATIENT_INFO,
+    CHAT, PATIENT_INFO,
     NURSE_DASHBOARD, NURSE_SCHEDULE, NURSE_PATIENT_LIST,
     NURSE_VITALS, NURSE_MEDICATION, NURSE_IV_FLUID, NURSE_WOUND_CARE,
     NURSE_CARE_REPORT, NURSE_HANDOVER, NURSE_CONSULTATION,
@@ -77,7 +78,23 @@ class MainActivity : ComponentActivity() {
         NotificationStorage.init(applicationContext)
         FcmTokenStorage.init(applicationContext)
         VisitStorage.init(applicationContext)
-        org.osmdroid.config.Configuration.getInstance().userAgentValue = packageName
+        val osmdroidPrefs = getSharedPreferences("osmdroid", Context.MODE_PRIVATE)
+        org.osmdroid.config.Configuration.getInstance().load(applicationContext, osmdroidPrefs)
+        val osmdroidConfig = org.osmdroid.config.Configuration.getInstance()
+        osmdroidConfig.userAgentValue =
+            "HHDMSPatientApp/1.0 (contact: hhdms-support@example.com)"
+        // Belt-and-suspenders: inject the UA into every HTTP request via
+        // additional properties, overriding whatever the TileDownloader sets.
+        osmdroidConfig.additionalHttpRequestProperties["User-Agent"] =
+            "HHDMSPatientApp/1.0 (contact: hhdms-support@example.com)"
+        // NOTE: we no longer wipe the tile cache here. osmdroid persists tiles to
+        // disk across launches, so previously-fetched tiles render instantly
+        // instead of being re-downloaded each time the app starts.
+        // Performance: more concurrent download threads + larger caches
+        osmdroidConfig.tileDownloadThreads = 4
+        osmdroidConfig.tileFileSystemThreads = 4
+        osmdroidConfig.tileFileSystemCacheMaxBytes = 100L * 1024 * 1024
+        osmdroidConfig.cacheMapTileCount = 12
         createNotificationChannel()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -121,7 +138,7 @@ class MainActivity : ComponentActivity() {
                     var videoCallAppId by remember { mutableStateOf("") }
                     var videoCallUid by remember { mutableStateOf(2) }
                     var selectedTeleconsultSessionId by remember { mutableStateOf<String?>(null) }
-                    var incomingCall by remember { mutableStateOf<IncomingCallInfo?>(null) }
+                    @Suppress("UNUSED") var incomingCall by remember { mutableStateOf<String?>(null) }
                     var chatConversationId by remember { mutableStateOf("") }
                     var chatOtherName by remember { mutableStateOf("") }
 
@@ -450,30 +467,6 @@ class MainActivity : ComponentActivity() {
                                 userEmail = loggedInUserEmail,
                                 latestSession = latestSession,
                                 doctorName = latestDoctorName,
-                    onLogout = {
-                        TokenManager.clearToken()
-                        NotificationStorage.setCurrentUser(null)
-                        currentScreen = AppScreen.AUTH
-                    },
-                    onNavigateToNotifications = {
-                        currentScreen = AppScreen.NOTIFICATIONS
-                    },
-                    onNavigateToAppointments = {
-                        currentScreen = AppScreen.APPOINTMENTS
-                    },
-                    onNavigateToBookingDetail = { sessionId ->
-                        bookingOrigin = AppScreen.DASHBOARD
-                        selectedSessionId = sessionId
-                        currentScreen = AppScreen.BOOKING_DETAIL
-                    },
-                    onNavigateToDoctorTracking = {
-                        trackingDoctorName = latestDoctorName ?: ""
-                        trackingPatientId = VisitStorage.getVisitingPatientId()
-                        currentScreen = AppScreen.DOCTOR_TRACKING
-                    },
-                    onCallEndedRefresh = { sessionLoadKey++ },
-                )
-            }
                                 onLogout = {
                                     TokenManager.clearToken()
                                     NotificationStorage.setCurrentUser(null)
@@ -513,14 +506,14 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-            AppScreen.MBBS_DOCTOR_DASHBOARD -> {
-                MbbsDoctorDashboardScreen(
-                    userEmail = loggedInUserEmail,
-                    onLogout = {
-                        TokenManager.clearToken()
-                        NotificationStorage.setCurrentUser(null)
-                        currentScreen = AppScreen.AUTH
-                    },
+                        AppScreen.MBBS_DOCTOR_DASHBOARD -> {
+                            MbbsDoctorDashboardScreen(
+                                userEmail = loggedInUserEmail,
+                                onLogout = {
+                                    TokenManager.clearToken()
+                                    NotificationStorage.setCurrentUser(null)
+                                    currentScreen = AppScreen.AUTH
+                                },
                                 onNavigateToNotifications = {
                                     currentScreen = AppScreen.NOTIFICATIONS
                                 },
@@ -871,7 +864,6 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    }
                 }
             }
         }
@@ -960,3 +952,4 @@ class MainActivity : ComponentActivity() {
         } catch (e: Exception) { null }
     }
 }
+

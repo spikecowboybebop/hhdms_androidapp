@@ -347,7 +347,7 @@ fun CaregiverConditionReportScreen(
                                                     scope.launch {
                                                         sendingAlert = report.id
                                                         try {
-                                                            RetrofitClient.apiService.sendCaregiverAlert(report.id, mapOf("target" to "nurse"))
+                                                            RetrofitClient.apiService.sendCaregiverAlert(report.id, "nurse")
                                                             snackbarText = "Alert sent to Nurse"
                                                             loadReports(selectedPatient?.id)
                                                         } catch (e: Exception) {
@@ -376,7 +376,7 @@ fun CaregiverConditionReportScreen(
                                                     scope.launch {
                                                         sendingAlert = report.id
                                                         try {
-                                                            RetrofitClient.apiService.sendCaregiverAlert(report.id, mapOf("target" to "doctor"))
+                                                            RetrofitClient.apiService.sendCaregiverAlert(report.id, "doctor")
                                                             snackbarText = "Alert sent to MBBS Doctor"
                                                             loadReports(selectedPatient?.id)
                                                         } catch (e: Exception) {

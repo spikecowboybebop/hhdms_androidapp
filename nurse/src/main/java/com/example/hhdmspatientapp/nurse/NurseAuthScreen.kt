@@ -147,12 +147,13 @@ fun NurseAuthScreen(onAuthSuccess: (email: String, role: String) -> Unit) {
         Brush.verticalGradient(listOf(TechTeal, ClinicalNavy))
     )) {
         Text(
-            text = "Aastha Nurse\nCare Portal",
+            text = "Welcome to Aastha\nTele-HealthCare",
             color = PureWhite,
-            fontSize = 40.sp,
+            fontSize = 42.sp,
             fontWeight = FontWeight.Bold,
             lineHeight = 42.sp,
-            modifier = Modifier.align(Alignment.TopStart).padding(top = 100.dp, start = 28.dp, end = 28.dp),
+            textAlign = TextAlign.Start,
+            modifier = Modifier.align(Alignment.TopStart).padding(top = 120.dp, start = 28.dp, end = 28.dp),
         )
 
         Column(
@@ -176,9 +177,9 @@ fun NurseAuthScreen(onAuthSuccess: (email: String, role: String) -> Unit) {
             Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally) {
                 if (isLogin) {
-                    Text("Nurse Login", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = TitleBlack)
+                    Text("Login", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = TitleBlack)
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp, bottom = 20.dp)) {
-                        Text("No account? ", color = CoolGray, fontSize = 14.sp)
+                        Text("Don't Have An Account? ", color = CoolGray, fontSize = 14.sp)
                         Text("Sign Up", color = TechTeal, fontSize = 14.sp, fontWeight = FontWeight.Bold,
                             modifier = Modifier.clickable { clearErrors(); isLogin = false }.padding(4.dp))
                     }
@@ -208,9 +209,9 @@ fun NurseAuthScreen(onAuthSuccess: (email: String, role: String) -> Unit) {
                             unfocusedBorderColor = LightGray, cursorColor = TechTeal, focusedLabelColor = TechTeal, unfocusedLabelColor = IconMuted))
 
                 } else {
-                    Text("Nurse Sign Up", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = TitleBlack)
+                    Text("Sign Up", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = TitleBlack)
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp, bottom = 16.dp)) {
-                        Text("Have an account? ", color = CoolGray, fontSize = 14.sp)
+                        Text("Already Have An Account? ", color = CoolGray, fontSize = 14.sp)
                         Text("Login", color = TechTeal, fontSize = 14.sp, fontWeight = FontWeight.Bold,
                             modifier = Modifier.clickable { clearErrors(); isLogin = true }.padding(4.dp))
                     }
