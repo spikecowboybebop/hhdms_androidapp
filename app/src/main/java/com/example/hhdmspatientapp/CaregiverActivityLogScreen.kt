@@ -105,7 +105,7 @@ fun CaregiverActivityLogScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-                modifier = Modifier.fillMaxWidth().background(Brush.horizontalGradient(colors = listOf(Color(0xFF3B82F6), TechTeal))),
+                modifier = Modifier.fillMaxWidth().background(Brush.horizontalGradient(colors = listOf(TechTeal, ClinicalNavy))),
             )
         },
         containerColor = SoftSlate,
@@ -241,7 +241,7 @@ fun CaregiverActivityLogScreen(
                                         },
                                         enabled = !actSubmitting,
                                         shape = RoundedCornerShape(12.dp),
-                                        colors = ButtonDefaults.buttonColors(containerColor = TechTeal),
+                                        colors = ButtonDefaults.buttonColors(containerColor = TechTeal, contentColor = PureWhite),
                                         modifier = Modifier.height(40.dp).fillMaxWidth(),
                                     ) {
                                         if (actSubmitting) {

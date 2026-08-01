@@ -119,7 +119,7 @@ fun CaregiverConditionReportScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-                modifier = Modifier.fillMaxWidth().background(Brush.horizontalGradient(colors = listOf(AlertAmber, Color(0xFFE65100)))),
+                modifier = Modifier.fillMaxWidth().background(Brush.horizontalGradient(colors = listOf(TechTeal, ClinicalNavy))),
             )
         },
         containerColor = SoftSlate,
@@ -276,9 +276,9 @@ fun CaregiverConditionReportScreen(
                                                 repSubmitting = false
                                             }
                                         },
-                                        enabled = !repSubmitting && repDesc.isNotBlank(),
+                                        enabled = !repSubmitting,
                                         shape = RoundedCornerShape(12.dp),
-                                        colors = ButtonDefaults.buttonColors(containerColor = AlertAmber),
+                                        colors = ButtonDefaults.buttonColors(containerColor = TechTeal, contentColor = PureWhite),
                                         modifier = Modifier.height(40.dp).fillMaxWidth(),
                                     ) {
                                         if (repSubmitting) {

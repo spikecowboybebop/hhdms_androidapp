@@ -143,7 +143,7 @@ fun CaregiverCheckInOutScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-                modifier = Modifier.fillMaxWidth().background(Brush.horizontalGradient(colors = listOf(Color(0xFF22C55E), TechTeal))),
+                modifier = Modifier.fillMaxWidth().background(Brush.horizontalGradient(colors = listOf(TechTeal, ClinicalNavy))),
             )
         },
         containerColor = SoftSlate,
@@ -350,10 +350,11 @@ fun CaregiverCheckInOutScreen(
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = when {
                                             isCheckedIn -> ErrorRed
-                                            else -> Color(0xFF22C55E)
+                                            else -> TechTeal
                                         },
+                                        contentColor = PureWhite,
                                     ),
-                                    enabled = !actionLoading && currentLocation != null,
+                                    enabled = !actionLoading,
                                 ) {
                                     if (actionLoading) {
                                         CircularProgressIndicator(color = PureWhite, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
