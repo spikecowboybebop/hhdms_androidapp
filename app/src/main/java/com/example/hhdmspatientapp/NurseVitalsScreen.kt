@@ -243,7 +243,7 @@ fun NurseVitalsScreen(
                         },
                         modifier = Modifier.fillMaxWidth().height(52.dp),
                         shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = TechTeal),
+                        colors = ButtonDefaults.buttonColors(containerColor = TechTeal, contentColor = PureWhite),
                         enabled = !saving,
                     ) {
                         if (saving) {

@@ -231,7 +231,7 @@ fun NurseMedicationScreen(
                         },
                         modifier = Modifier.fillMaxWidth().height(52.dp),
                         shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7B1FA2)),
+                        colors = ButtonDefaults.buttonColors(containerColor = TechTeal, contentColor = PureWhite),
                         enabled = !saving && drugName.isNotBlank(),
                     ) {
                         if (saving) {

@@ -191,7 +191,7 @@ fun NurseIVFluidScreen(
                         },
                         modifier = Modifier.fillMaxWidth().height(52.dp),
                         shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0)),
+                        colors = ButtonDefaults.buttonColors(containerColor = TechTeal, contentColor = PureWhite),
                         enabled = !saving && fluidType.isNotBlank() && rate.isNotBlank(),
                     ) {
                         if (saving) CircularProgressIndicator(color = PureWhite, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
