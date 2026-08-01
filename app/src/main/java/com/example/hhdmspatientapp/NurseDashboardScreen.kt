@@ -2,6 +2,7 @@ package com.example.hhdmspatientapp
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -14,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -156,11 +158,19 @@ fun NurseDashboardScreen(
                     Spacer(modifier = Modifier.height(20.dp))
 
                     // Today's Schedule Card
-                    Card(
-                        modifier = Modifier.fillMaxWidth().clickable(onClick = onNavigateToSchedule),
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = onNavigateToSchedule,
+                            ),
                         shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF22C55E).copy(alpha = 0.08f)),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                        color = Color(0xFF22C55E).copy(alpha = 0.08f),
+                        tonalElevation = 0.dp,
+                        shadowElevation = 0.dp,
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(16.dp),
