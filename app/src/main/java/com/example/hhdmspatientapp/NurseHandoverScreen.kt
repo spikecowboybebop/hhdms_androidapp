@@ -168,7 +168,7 @@ fun NurseHandoverScreen(
                         modifier = Modifier.fillMaxWidth().height(52.dp),
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = TechTeal, contentColor = PureWhite),
-                        enabled = !saving && currentStatus.isNotBlank(),
+                        enabled = !saving,
                     ) {
                         if (saving) CircularProgressIndicator(color = PureWhite, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                         else { Icon(Icons.Default.Send, contentDescription = null, tint = PureWhite); Spacer(modifier = Modifier.width(8.dp)); Text("Submit Handover", fontSize = 16.sp, fontWeight = FontWeight.Bold) }

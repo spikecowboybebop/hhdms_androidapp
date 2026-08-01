@@ -178,7 +178,7 @@ fun NurseSupplyTrackingScreen(
                         modifier = Modifier.fillMaxWidth().height(52.dp),
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = TechTeal, contentColor = PureWhite),
-                        enabled = !saving && supplyName.isNotBlank(),
+                        enabled = !saving,
                     ) {
                         if (saving) CircularProgressIndicator(color = PureWhite, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                         else { Icon(Icons.Default.Add, contentDescription = null, tint = PureWhite); Spacer(modifier = Modifier.width(8.dp)); Text("Log Usage", fontSize = 16.sp, fontWeight = FontWeight.Bold) }

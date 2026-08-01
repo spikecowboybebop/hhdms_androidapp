@@ -177,7 +177,7 @@ fun NursePediatricCareScreen(
                                     },
                                     modifier = Modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(12.dp),
                                     colors = ButtonDefaults.buttonColors(containerColor = TechTeal, contentColor = PureWhite),
-                                    enabled = feedingType.isNotBlank(),
+                                    enabled = true,
                                 ) { Text("Log Feeding", fontWeight = FontWeight.Bold) }
 
                                 if (feedingLogs.isNotEmpty()) {
@@ -270,7 +270,7 @@ fun NursePediatricCareScreen(
                                     },
                                     modifier = Modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(12.dp),
                                     colors = ButtonDefaults.buttonColors(containerColor = TechTeal, contentColor = PureWhite),
-                                    enabled = vaccineName.isNotBlank(),
+                                    enabled = true,
                                 ) { Text("Record Vaccination", fontWeight = FontWeight.Bold) }
 
                                 if (vaccinationRecords.isNotEmpty()) {

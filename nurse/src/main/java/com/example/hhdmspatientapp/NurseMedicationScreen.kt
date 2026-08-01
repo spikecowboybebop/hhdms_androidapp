@@ -232,7 +232,7 @@ fun NurseMedicationScreen(
                         modifier = Modifier.fillMaxWidth().height(52.dp),
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = TechTeal, contentColor = PureWhite),
-                        enabled = !saving && drugName.isNotBlank(),
+                        enabled = !saving,
                     ) {
                         if (saving) {
                             CircularProgressIndicator(color = PureWhite, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
