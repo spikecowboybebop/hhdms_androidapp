@@ -79,7 +79,7 @@ fun NurseIVFluidScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = { if (showForm || selectedPatient != null) {
-                        if (showForm) { showForm = false } else { selectedPatient = null }
+                        if (showForm) { showForm = false; selectedPatient = null } else { selectedPatient = null }
                     } else { onBack() } }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = PureWhite)
                     }
@@ -183,6 +183,7 @@ fun NurseIVFluidScreen(
                                     )
                                     snackbarText = "IV fluid order created!"
                                     showForm = false
+                                    selectedPatient = null
                                     selectedPatient?.let { p -> ivRecords = RetrofitClient.apiService.getIvFluidRecords(p.id) }
                                 } catch (e: Exception) { snackbarText = "Error: ${e.message}" }
                                 saving = false

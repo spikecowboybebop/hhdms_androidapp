@@ -75,7 +75,7 @@ fun NurseConsultationScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = { if (showForm || selectedPatient != null) {
-                        if (showForm) { showForm = false } else { selectedPatient = null }
+                        if (showForm) { showForm = false; selectedPatient = null } else { selectedPatient = null }
                     } else { onBack() } }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = PureWhite)
                     }
@@ -175,6 +175,7 @@ fun NurseConsultationScreen(
                                     )
                                     snackbarText = "Consultation request sent to doctor!"
                                     showForm = false
+                                    selectedPatient = null
                                     selectedPatient?.let { p -> consultations = RetrofitClient.apiService.getNurseConsultationRequests(p.id) }
                                 } catch (e: Exception) { snackbarText = "Error: ${e.message}" }
                                 saving = false

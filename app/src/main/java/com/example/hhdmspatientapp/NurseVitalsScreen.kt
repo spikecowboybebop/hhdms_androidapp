@@ -231,6 +231,7 @@ fun NurseVitalsScreen(
                                     )
                                     snackbarText = "Vitals recorded successfully!"
                                     showForm = false
+                                    selectedPatient = null
                                     selectedPatient?.let { p ->
                                         vitals = RetrofitClient.apiService.getNursePatientVitals(p.id)
                                     }

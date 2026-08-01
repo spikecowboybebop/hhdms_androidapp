@@ -104,7 +104,7 @@ fun NurseWoundCareScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = { if (showForm || selectedPatient != null) {
-                        if (showForm) { showForm = false } else { selectedPatient = null }
+                        if (showForm) { showForm = false; selectedPatient = null } else { selectedPatient = null }
                     } else { onBack() } }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = PureWhite)
                     }
@@ -246,6 +246,7 @@ fun NurseWoundCareScreen(
                                     }
                                     snackbarText = "Wound care recorded!"
                                     showForm = false
+                                    selectedPatient = null
                                     selectedPatient?.let { p -> woundRecords = RetrofitClient.apiService.getWoundCareRecords(p.id) }
                                 } catch (e: Exception) { snackbarText = "Error: ${e.message}" }
                                 saving = false
