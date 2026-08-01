@@ -15,7 +15,7 @@ import java.util.TimerTask
 
 object CallSignalingManager {
     private const val TAG = "CallSignalingManager"
-    private const val SERVER_URL = "http://192.168.0.102:3001"
+    private const val SERVER_URL = "https://hhdms-api.onrender.com"
 
     private var mSocket: Socket? = null
     private var appContext: Context? = null

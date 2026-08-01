@@ -31,7 +31,7 @@ Single-module Android app (Jetpack Compose + Material3). Supports three roles: *
 
 ## Critical conventions
 
-- **Server URL is hardcoded** to `http://192.168.0.102:3001` in `NetworkService.kt`, `CallSignalingManager.kt`, and `ChatScreen.kt`. Change before testing on a different network.
+- **Server URL is hardcoded** to `https://hhdms-api.onrender.com` (Render production backend) in `NetworkService.kt`, `CallSignalingManager.kt`, and `ChatScreen.kt`. Change to a local IP before testing on a LAN.
 - **Cleartext HTTP** is allowed (`AndroidManifest.xml:19` `usesCleartextTraffic="true"`) — required for local LAN.
 - **Release build has R8/proguard disabled** (`optimization.enable = false`). Enable before shipping.
 - **Configuration cache** is on (`gradle.properties:17`). Use `--no-configuration-cache` if stale cache causes issues.

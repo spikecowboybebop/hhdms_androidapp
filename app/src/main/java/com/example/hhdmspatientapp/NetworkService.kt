@@ -1146,8 +1146,8 @@ interface AuthApiService {
 // 3. SINGLETON CLIENT INSTANCE (Emulating Gateway Connection)
 // =============================================================================
 object RetrofitClient {
-    // 10.0.2.2 automatically bridges out to your host development computer's localhost:3000
-    private const val BASE_URL = "http://192.168.0.102:3001"
+    // Render production backend
+    private const val BASE_URL = "https://hhdms-api.onrender.com"
 
     private val okHttpClient = okhttp3.OkHttpClient.Builder()
         .addInterceptor { chain ->
