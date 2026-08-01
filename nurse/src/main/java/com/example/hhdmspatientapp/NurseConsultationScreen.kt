@@ -81,7 +81,7 @@ fun NurseConsultationScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-                modifier = Modifier.fillMaxWidth().background(Brush.horizontalGradient(colors = listOf(AlertAmber, TechTeal))),
+                modifier = Modifier.fillMaxWidth().background(Brush.horizontalGradient(colors = listOf(TechTeal, ClinicalNavy))),
             )
         },
         containerColor = SoftSlate,

@@ -67,7 +67,7 @@ fun NurseCareReportScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-                modifier = Modifier.fillMaxWidth().background(Brush.horizontalGradient(colors = listOf(ClinicalNavy, TechTeal))),
+                modifier = Modifier.fillMaxWidth().background(Brush.horizontalGradient(colors = listOf(TechTeal, ClinicalNavy))),
             )
         },
         containerColor = SoftSlate,
