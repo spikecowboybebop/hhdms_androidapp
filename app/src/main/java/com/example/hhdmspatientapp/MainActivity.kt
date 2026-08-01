@@ -398,6 +398,18 @@ class MainActivity : ComponentActivity() {
                                 videoCallToken = ""
                                 currentScreen = homeScreen
                             }
+                            AppScreen.NURSE_DASHBOARD -> currentScreen = AppScreen.DASHBOARD
+                            AppScreen.NURSE_SCHEDULE -> currentScreen = AppScreen.NURSE_DASHBOARD
+                            AppScreen.NURSE_PATIENT_LIST -> currentScreen = AppScreen.NURSE_DASHBOARD
+                            AppScreen.NURSE_VITALS,
+                            AppScreen.NURSE_MEDICATION,
+                            AppScreen.NURSE_IV_FLUID,
+                            AppScreen.NURSE_WOUND_CARE,
+                            AppScreen.NURSE_CARE_REPORT,
+                            AppScreen.NURSE_HANDOVER,
+                            AppScreen.NURSE_CONSULTATION,
+                            AppScreen.NURSE_SUPPLY_TRACKING,
+                            AppScreen.NURSE_PEDIATRIC_CARE -> currentScreen = AppScreen.NURSE_DASHBOARD
                             else -> finishAffinity()
                         }
                     }
