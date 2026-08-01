@@ -203,10 +203,13 @@ object CallSignalingManager {
             engine.setChannelProfile(Constants.CHANNEL_PROFILE_COMMUNICATION)
             engine.setClientRole(Constants.CLIENT_ROLE_BROADCASTER)
 
-            // Loud, clear voice tuning for the emergency call
+            // Loud, clear voice tuning for the emergency call.
+            // IMPORTANT: use the DEFAULT voice scenario, NOT GAME_STREAMING.
+            // GAME_STREAMING is for game audio and is half-duplex (walkie-talkie);
+            // it makes only one side audible at a time during a live call.
             engine.setAudioProfile(
-                Constants.AUDIO_PROFILE_MUSIC_HIGH_QUALITY,
-                Constants.AUDIO_SCENARIO_GAME_STREAMING,
+                Constants.AUDIO_PROFILE_SPEECH_STANDARD,
+                Constants.AUDIO_SCENARIO_DEFAULT,
             )
             engine.adjustRecordingSignalVolume(400)
             engine.adjustPlaybackSignalVolume(400)
