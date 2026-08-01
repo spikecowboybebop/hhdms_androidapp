@@ -419,7 +419,7 @@ fun DashboardScreen(userEmail: String, latestSession: SessionSummary? = null, do
             }
 
             // ── Appointment Done Banner ──
-            if (appointmentDone.value && !isPaid) {
+            if (appointmentDone.value && !isPaid && latestSession != null) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),

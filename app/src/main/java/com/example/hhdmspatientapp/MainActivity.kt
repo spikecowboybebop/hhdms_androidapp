@@ -482,6 +482,9 @@ class MainActivity : ComponentActivity() {
                                 onLogout = {
                                     TokenManager.clearToken()
                                     NotificationStorage.setCurrentUser(null)
+                                    VisitStorage.clearVisit()
+                                    VisitStorage.clearVisitingPatientId()
+                                    VisitStorage.clearAppointmentDone()
                                     currentScreen = AppScreen.AUTH
                                 },
                                 onNavigateToNotifications = {

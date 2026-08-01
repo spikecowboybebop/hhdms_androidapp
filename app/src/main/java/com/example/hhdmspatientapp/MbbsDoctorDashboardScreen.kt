@@ -1,5 +1,6 @@
 package com.example.hhdmspatientapp
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -21,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hhdmspatientapp.ui.theme.*
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,6 +35,8 @@ fun MbbsDoctorDashboardScreen(
 ) {
     val doctorName = userEmail.substringBefore("@")
     val displayName = doctorName.replaceFirstChar { it.uppercase() }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var conversations by remember { mutableStateOf<List<ChatConversation>>(emptyList()) }
     var unreadCounts by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
 
@@ -178,7 +182,19 @@ fun MbbsDoctorDashboardScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        onNavigateToChat(conv.id, patientName)
+                                        val targetId = conv.id
+                                        if (targetId.startsWith("assignment:")) {
+                                            scope.launch {
+                                                try {
+                                                    val newConv = RetrofitClient.apiService.getOrCreateConversation(conv.assignment_id)
+                                                    onNavigateToChat(newConv.id, patientName)
+                                                } catch (e: Exception) {
+                                                    Toast.makeText(context, "Could not open chat", Toast.LENGTH_SHORT).show()
+                                                }
+                                            }
+                                        } else {
+                                            onNavigateToChat(targetId, patientName)
+                                        }
                                     }
                                     .padding(vertical = 10.dp),
                                 verticalAlignment = Alignment.CenterVertically,
