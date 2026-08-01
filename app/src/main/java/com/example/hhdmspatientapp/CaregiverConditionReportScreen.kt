@@ -155,7 +155,7 @@ fun CaregiverConditionReportScreen(
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 patients.forEach { p ->
                                     val isSelected = selectedPatient?.id == p.id
-                                    val chipColor = if (isSelected) AlertAmber else CoolGray.copy(alpha = 0.15f)
+                                    val chipColor = if (isSelected) TechTeal else CoolGray.copy(alpha = 0.15f)
                                     val textColor = if (isSelected) PureWhite else TitleBlack
                                     Box(
                                         modifier = Modifier
@@ -205,7 +205,7 @@ fun CaregiverConditionReportScreen(
                                                         modifier = Modifier
                                                             .weight(1f)
                                                             .clip(RoundedCornerShape(10.dp))
-                                                            .background(if (isSelected) AlertAmber else SoftSlate)
+                                                            .background(if (isSelected) TechTeal else SoftSlate)
                                                             .clickable { repType = value }
                                                             .padding(vertical = 10.dp),
                                                         contentAlignment = Alignment.Center,
@@ -227,7 +227,7 @@ fun CaregiverConditionReportScreen(
                                         placeholder = { Text("Describe the observed change in detail...", fontSize = 12.sp) },
                                         modifier = Modifier.fillMaxWidth().height(100.dp),
                                         shape = RoundedCornerShape(12.dp),
-                                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = AlertAmber, unfocusedBorderColor = CoolGray.copy(alpha = 0.3f)),
+                                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = TechTeal, unfocusedBorderColor = CoolGray.copy(alpha = 0.3f)),
                                     )
                                     Spacer(modifier = Modifier.height(12.dp))
 
@@ -321,10 +321,10 @@ fun CaregiverConditionReportScreen(
                                             val repLabel = REPORT_TYPES.find { it.first == report.report_type }?.second ?: report.report_type
                                             Box(
                                                 modifier = Modifier
-                                                    .background(AlertAmber.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
+                                                    .background(TechTeal.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
                                                     .padding(horizontal = 8.dp, vertical = 3.dp),
                                             ) {
-                                                Text(repLabel, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = AlertAmber)
+                                                Text(repLabel, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = TechTeal)
                                             }
                                         }
                                         Text(report.created_at?.take(16)?.replace("T", " ") ?: "", fontSize = 9.sp, color = CoolGray.copy(alpha = 0.6f))
