@@ -2,7 +2,10 @@ package com.example.hhdmspatientapp
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
+import android.view.SurfaceView
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -43,7 +46,6 @@ import io.agora.rtc2.Constants
 import io.agora.rtc2.IRtcEngineEventHandler
 import io.agora.rtc2.RtcEngine
 import io.agora.rtc2.video.VideoCanvas
-import android.view.SurfaceView
 
 @Composable
 fun VideoCallScreen(
@@ -61,6 +63,8 @@ fun VideoCallScreen(
     var engine by remember { mutableStateOf<RtcEngine?>(null) }
     var localSurfaceView by remember { mutableStateOf<SurfaceView?>(null) }
     var remoteSurfaceView by remember { mutableStateOf<SurfaceView?>(null) }
+    // bumped when the remote video stream (re)starts so the view re-binds
+    var remoteVideoSetupKey by remember { mutableStateOf(0) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -87,12 +91,32 @@ fun VideoCallScreen(
                 override fun onUserJoined(uid: Int, elapsed: Int) {
                     Log.d("VideoCall", "Remote user joined: $uid")
                     remoteUid = uid
+                    remoteVideoSetupKey++
                 }
 
                 override fun onUserOffline(uid: Int, reason: Int) {
-                    Log.d("VideoCall", "Remote user offline: $uid")
+                    Log.d("VideoCall", "Remote user offline: $uid (reason=$reason)")
                     remoteUid = null
                     remoteSurfaceView = null
+                    // The peer left the channel, so the call is over.
+                    // Agora callbacks run on a background thread; hop to main.
+                    Handler(Looper.getMainLooper()).post {
+                        onEndCall()
+                    }
+                }
+
+                override fun onRemoteVideoStateChanged(uid: Int, state: Int, reason: Int, elapsed: Int) {
+                    Log.d("VideoCall", "Remote video state changed: uid=$uid state=$state reason=$reason")
+                    // Bind (or re-bind) the remote view once the stream is actually
+                    // being received/decoded. The first frame can be dropped if the
+                    // view is attached too early, so re-binding here fixes the
+                    // "video only works after toggling camera" issue.
+                    if (state == Constants.REMOTE_VIDEO_STATE_STARTING ||
+                        state == Constants.REMOTE_VIDEO_STATE_DECODING
+                    ) {
+                        remoteUid = uid
+                        remoteVideoSetupKey++
+                    }
                 }
 
                 override fun onJoinChannelSuccess(channel: String, uid: Int, elapsed: Int) {
@@ -126,14 +150,15 @@ fun VideoCallScreen(
         }
     }
 
-    // Update remote video view when remote user joins
-    LaunchedEffect(remoteUid) {
+    // Bind the remote video view whenever the remote user joins OR when their
+    // video stream (re)starts. Re-keying on remoteVideoSetupKey forces the
+    // SurfaceView to be re-attached to the engine so decoded frames render.
+    LaunchedEffect(remoteUid, remoteVideoSetupKey) {
         val currentEngine = engine ?: return@LaunchedEffect
         val uid = remoteUid ?: return@LaunchedEffect
 
-        Log.d("VideoCall", "Setting up remote video for uid: $uid")
-        val remoteView = SurfaceView(context)
-        remoteSurfaceView = remoteView
+        Log.d("VideoCall", "Setting up remote video for uid: $uid (key=$remoteVideoSetupKey)")
+        val remoteView = remoteSurfaceView ?: SurfaceView(context).also { remoteSurfaceView = it }
         currentEngine.setupRemoteVideo(VideoCanvas(remoteView, VideoCanvas.RENDER_MODE_HIDDEN, uid))
         currentEngine.muteRemoteAudioStream(uid, false)
         currentEngine.muteRemoteVideoStream(uid, false)
