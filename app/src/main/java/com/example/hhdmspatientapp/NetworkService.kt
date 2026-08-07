@@ -247,6 +247,18 @@ data class PatientReport(
     val generated_at: String? = null,
 )
 
+data class SessionInvoice(
+    val id: String,
+    val invoice_no: String? = null,
+    val service_type: String? = null,
+    val amount: Any? = null,
+    val currency: String? = null,
+    val status: String? = null,
+    val issued_at: String? = null,
+    val paid_at: String? = null,
+    val file_url: String? = null,
+)
+
 data class CreatePaymentRequest(
     val booking_session_id: String,
 )
@@ -1020,6 +1032,12 @@ interface AuthApiService {
 
     @GET("patients/self/reports")
     suspend fun getSelfReports(): List<PatientReport>
+
+    @GET("bookings/session/{sessionId}/reports")
+    suspend fun getBookingSessionReports(@Path("sessionId") sessionId: String): List<PatientReport>
+
+    @GET("payments/session/{sessionId}/invoice")
+    suspend fun getSessionInvoice(@Path("sessionId") sessionId: String): SessionInvoice?
 
     // ── Payment Endpoints ──
     @POST("payments/create-intent")

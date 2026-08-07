@@ -150,12 +150,21 @@ fun BookingDetailContent(session: BookingSessionResponse, paddingValues: Padding
     val context = LocalContext.current
     var reports by remember { mutableStateOf<List<PatientReport>>(emptyList()) }
     var reportsLoading by remember { mutableStateOf(true) }
+    var invoice by remember { mutableStateOf<SessionInvoice?>(null) }
+    var invoiceLoading by remember { mutableStateOf(true) }
 
-    LaunchedEffect(Unit) {
-        try {
-            reports = RetrofitClient.apiService.getSelfReports()
-        } catch (_: Exception) { }
+    LaunchedEffect(session.id) {
+        reportsLoading = true
+        reports = try {
+            RetrofitClient.apiService.getBookingSessionReports(session.id)
+        } catch (_: Exception) { emptyList() }
         reportsLoading = false
+
+        invoiceLoading = true
+        invoice = try {
+            RetrofitClient.apiService.getSessionInvoice(session.id)
+        } catch (_: Exception) { null }
+        invoiceLoading = false
     }
 
     LazyColumn(
@@ -189,6 +198,10 @@ fun BookingDetailContent(session: BookingSessionResponse, paddingValues: Padding
 
         item {
             ReportsSection(reports = reports, loading = reportsLoading, context = context)
+        }
+
+        item {
+            InvoiceCard(invoice = invoice, loading = invoiceLoading, context = context)
         }
 
         item {
@@ -286,6 +299,81 @@ fun ReportCard(report: PatientReport, context: android.content.Context) {
             Icon(
                 Icons.AutoMirrored.Filled.OpenInNew,
                 contentDescription = "Open",
+                tint = TechTeal,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+    }
+}
+
+@Composable
+fun InvoiceCard(
+    invoice: SessionInvoice?,
+    loading: Boolean,
+    context: android.content.Context,
+) {
+    if (loading) return
+
+    val url = invoice?.file_url
+    if (url.isNullOrBlank()) return
+
+    val amount = invoice.amount?.toString()?.toDoubleOrNull()
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                context.startActivity(intent)
+            },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = PureWhite),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .background(Color(0xFF0A2540).copy(alpha = 0.08f), RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Default.Description,
+                    contentDescription = null,
+                    tint = ClinicalNavy,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+            Spacer(modifier = Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Invoice ${invoice?.invoice_no ?: ""}".trim(),
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TitleBlack,
+                )
+                if (amount != null) {
+                    Text(
+                        text = "৳${String.format("%.2f", amount)}",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TechTeal,
+                    )
+                }
+                if (!invoice?.status.isNullOrBlank()) {
+                    Text(
+                        text = invoice!!.status,
+                        fontSize = 12.sp,
+                        color = CoolGray,
+                    )
+                }
+            }
+            Icon(
+                Icons.AutoMirrored.Filled.OpenInNew,
+                contentDescription = "Open PDF",
                 tint = TechTeal,
                 modifier = Modifier.size(20.dp),
             )
