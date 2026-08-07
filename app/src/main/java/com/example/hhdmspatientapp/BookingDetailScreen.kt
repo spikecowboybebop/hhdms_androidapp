@@ -365,7 +365,7 @@ fun InvoiceCard(
                 }
                 if (!invoice?.status.isNullOrBlank()) {
                     Text(
-                        text = invoice!!.status,
+                        text = invoice!!.status.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },
                         fontSize = 12.sp,
                         color = CoolGray,
                     )
